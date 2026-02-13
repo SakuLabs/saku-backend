@@ -39,7 +39,28 @@ export class TaskController {
   @ApiOperation({ summary: 'Create a new task' })
   @ApiResponse({ status: 201, description: 'Task created successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({ type: CreateTaskDto })
+  @ApiBody({
+    type: CreateTaskDto,
+    examples: {
+      example1: {
+        summary: 'Create a simple task',
+        value: {
+          title: 'Complete assignment',
+          description: 'Finish the programming assignment',
+          priority: 'HIGH'
+        }
+      },
+      example2: {
+        summary: 'Create a task with due date',
+        value: {
+          title: 'Study for exam',
+          description: 'Review chapters 1-5',
+          priority: 'MEDIUM',
+          dueDate: '2024-02-20T10:00:00Z'
+        }
+      }
+    }
+  })
   async create(@Body() dto: CreateTaskDto, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -53,7 +74,23 @@ export class TaskController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Task not found' })
   @ApiParam({ name: 'id', description: 'Task ID' })
-  @ApiBody({ type: UpdateTaskStatusDto })
+  @ApiBody({
+    type: UpdateTaskStatusDto,
+    examples: {
+      example1: {
+        summary: 'Mark task as in progress',
+        value: {
+          status: 'IN_PROGRESS'
+        }
+      },
+      example2: {
+        summary: 'Mark task as done',
+        value: {
+          status: 'DONE'
+        }
+      }
+    }
+  })
   async updateStatus(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -93,7 +130,23 @@ export class TaskController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Task not found' })
   @ApiParam({ name: 'id', description: 'Task ID' })
-  @ApiBody({ type: UpdateTaskProgressDto })
+  @ApiBody({
+    type: UpdateTaskProgressDto,
+    examples: {
+      example1: {
+        summary: 'Update progress to 50%',
+        value: {
+          progress: 50
+        }
+      },
+      example2: {
+        summary: 'Update progress to 100%',
+        value: {
+          progress: 100
+        }
+      }
+    }
+  })
   async updateProgress(
     @Param('id') id: string,
     @Body('progress') progress: number,

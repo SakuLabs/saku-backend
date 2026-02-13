@@ -52,7 +52,18 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Check for schedule conflicts' })
   @ApiResponse({ status: 200, description: 'Conflict check completed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({ type: CheckConflictsDto })
+  @ApiBody({
+    type: CheckConflictsDto,
+    examples: {
+      example1: {
+        summary: 'Check conflicts for a 2-hour slot',
+        value: {
+          startTime: '2024-02-20T10:00:00Z',
+          endTime: '2024-02-20T12:00:00Z'
+        }
+      }
+    }
+  })
   async checkConflicts(
     @Body('startTime') startTime: string,
     @Body('endTime') endTime: string,
@@ -77,7 +88,38 @@ export class ScheduleController {
   @ApiResponse({ status: 201, description: 'Schedule created successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - no access to group' })
-  @ApiBody({ type: CreateScheduleDto })
+  @ApiBody({
+    type: CreateScheduleDto,
+    examples: {
+      example1: {
+        summary: 'Create a personal schedule',
+        value: {
+          title: 'Study Session',
+          startTime: '2024-02-20T10:00:00Z',
+          endTime: '2024-02-20T12:00:00Z',
+          type: 'STUDY',
+          color: 'BLUE',
+          importance: 'HIGH',
+          description: 'Study for mathematics exam',
+          taskIds: []
+        }
+      },
+      example2: {
+        summary: 'Create a group schedule',
+        value: {
+          title: 'Group Meeting',
+          startTime: '2024-02-20T14:00:00Z',
+          endTime: '2024-02-20T15:00:00Z',
+          type: 'MEETING',
+          color: 'GREEN',
+          importance: 'NORMAL',
+          description: 'Weekly project sync',
+          groupId: 'group-id-here',
+          taskIds: []
+        }
+      }
+    }
+  })
   async create(@Body() dto: CreateScheduleDto, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -110,7 +152,25 @@ export class ScheduleController {
   @ApiResponse({ status: 403, description: 'Forbidden - no access to schedule' })
   @ApiResponse({ status: 404, description: 'Schedule not found' })
   @ApiParam({ name: 'id', description: 'Schedule ID' })
-  @ApiBody({ type: UpdateScheduleDto })
+  @ApiBody({
+    type: UpdateScheduleDto,
+    examples: {
+      example1: {
+        summary: 'Update schedule title and time',
+        value: {
+          title: 'Updated Study Session',
+          startTime: '2024-02-20T11:00:00Z',
+          endTime: '2024-02-20T13:00:00Z'
+        }
+      },
+      example2: {
+        summary: 'Update schedule progress',
+        value: {
+          progress: 75
+        }
+      }
+    }
+  })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateScheduleDto,

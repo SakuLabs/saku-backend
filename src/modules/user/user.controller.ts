@@ -60,7 +60,24 @@ export class UserController {
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, description: 'User profile updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({ type: UpdateUserDto })
+  @ApiBody({
+    type: UpdateUserDto,
+    examples: {
+      example1: {
+        summary: 'Update name and bio',
+        value: {
+          name: 'John Doe Updated',
+          bio: 'Software developer and student'
+        }
+      },
+      example2: {
+        summary: 'Update avatar URL',
+        value: {
+          avatarUrl: 'https://example.com/avatar.jpg'
+        }
+      }
+    }
+  })
   async updateMe(
     @CurrentUser() user: any,
     @Body('name') name?: string,

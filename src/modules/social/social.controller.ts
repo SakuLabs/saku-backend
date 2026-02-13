@@ -80,7 +80,17 @@ export class SocialController {
   @ApiOperation({ summary: 'Search users by email' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({ type: SearchUsersByEmailDto })
+  @ApiBody({
+    type: SearchUsersByEmailDto,
+    examples: {
+      example1: {
+        summary: 'Search for users by email',
+        value: {
+          email: 'john@example.com'
+        }
+      }
+    }
+  })
   async searchUsers(@Body('email') email: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -108,7 +118,23 @@ export class SocialController {
   @ApiOperation({ summary: 'Search users by name or user code' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({ type: SearchUsersByNameDto })
+  @ApiBody({
+    type: SearchUsersByNameDto,
+    examples: {
+      example1: {
+        summary: 'Search for users by name',
+        value: {
+          name: 'John'
+        }
+      },
+      example2: {
+        summary: 'Search for users by user code',
+        value: {
+          name: 'JD123'
+        }
+      }
+    }
+  })
   async searchUsersByName(@Body('name') name: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -140,7 +166,17 @@ export class SocialController {
   @ApiOperation({ summary: 'Search user by ID' })
   @ApiResponse({ status: 200, description: 'User retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({ type: SearchUsersByIdDto })
+  @ApiBody({
+    type: SearchUsersByIdDto,
+    examples: {
+      example1: {
+        summary: 'Search for user by ID',
+        value: {
+          id: 'user-id-here'
+        }
+      }
+    }
+  })
   async searchUsersById(@Body('id') id: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -169,7 +205,23 @@ export class SocialController {
   @ApiResponse({ status: 201, description: 'Friend request sent' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiBody({ type: RequestFriendDto })
+  @ApiBody({
+    type: RequestFriendDto,
+    examples: {
+      example1: {
+        summary: 'Send friend request by user code',
+        value: {
+          userCode: 'JD123'
+        }
+      },
+      example2: {
+        summary: 'Send friend request by user ID',
+        value: {
+          friendId: 'user-id-here'
+        }
+      }
+    }
+  })
   async requestFriend(
     @Body('userCode') userCode: string,
     @Body('friendId') friendId: string,
@@ -379,7 +431,17 @@ export class SocialController {
   @ApiOperation({ summary: 'Create a new group' })
   @ApiResponse({ status: 201, description: 'Group created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({ type: CreateGroupDto })
+  @ApiBody({
+    type: CreateGroupDto,
+    examples: {
+      example1: {
+        summary: 'Create a new group',
+        value: {
+          name: 'Study Group'
+        }
+      }
+    }
+  })
   async createGroup(@Body('name') name: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -422,7 +484,25 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
-  @ApiBody({ type: AddMemberToGroupDto })
+  @ApiBody({
+    type: AddMemberToGroupDto,
+    examples: {
+      example1: {
+        summary: 'Add member with schedule permission',
+        value: {
+          userId: 'user-id-here',
+          canCreateSchedule: true
+        }
+      },
+      example2: {
+        summary: 'Add member without schedule permission',
+        value: {
+          userId: 'user-id-here',
+          canCreateSchedule: false
+        }
+      }
+    }
+  })
   async addMemberToGroup(
     @Param('groupId') groupId: string,
     @Body('userId') memberId: string,
@@ -498,7 +578,17 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
-  @ApiBody({ type: InviteToGroupDto })
+  @ApiBody({
+    type: InviteToGroupDto,
+    examples: {
+      example1: {
+        summary: 'Invite a friend to group',
+        value: {
+          userId: 'user-id-here'
+        }
+      }
+    }
+  })
   async inviteToGroup(
     @Param('groupId') groupId: string,
     @Body('userId') inviteeId: string,
@@ -684,7 +774,17 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
-  @ApiBody({ type: UpdateGroupNameDto })
+  @ApiBody({
+    type: UpdateGroupNameDto,
+    examples: {
+      example1: {
+        summary: 'Update group name',
+        value: {
+          name: 'Updated Study Group'
+        }
+      }
+    }
+  })
   async updateGroupName(
     @Param('groupId') groupId: string,
     @Body('name') name: string,
@@ -797,7 +897,17 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
-  @ApiBody({ type: TransferAdminDto })
+  @ApiBody({
+    type: TransferAdminDto,
+    examples: {
+      example1: {
+        summary: 'Transfer admin to another member',
+        value: {
+          targetUserId: 'user-id-here'
+        }
+      }
+    }
+  })
   async transferAdmin(
     @Param('groupId') groupId: string,
     @Body('targetUserId') targetUserId: string,
