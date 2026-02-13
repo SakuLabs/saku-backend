@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model User {
+  id        String   @id @default(uuid())
+  userCode  String   @unique
+  email     String   @unique
+  password  String
+  name      String
+  bio       String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+
+  // Relasi Tugas
+  tasks     Task[]
+  
+  // Relasi Jadwal
+  schedules Schedule[]
+
+  // Fitur Pertemanan (Self-relation Many-to-Many)
+  friends   UserFriend[] @relation("UserFriends")
+  friendOf  UserFriend[] @relation("FriendOf")
+
+  // Fitur Grup
+  groupMemberships GroupMember[]
+
+  // Chat
+  sentMessages     Message[] @relation("MessageSender")
+  receivedMessages Message[] @relation("MessageRecipient")
+
+  friendRequestsSent     FriendRequest[] @relation("FriendRequestSender")
+  friendRequestsReceived FriendRequest[] @relation("FriendRequestReceiver")
+
+  groupInvitesSent     GroupInvite[] @relation("GroupInviteSender")
+  groupInvitesReceived GroupInvite[] @relation("GroupInviteReceiver")
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  // Relasi ke GroupMember
+  members   GroupMember[]
+  
+  // Tugas khusus untuk grup
+  tasks     Task[]
+
+  // Jadwal grup
+  schedules Schedule[]
+
+  // Chat
+  messages  Message[]
+
+  invites   GroupInvite[]
+}
+
+model Task {
+  id        String   @id @default(uuid())
+  title     String
+  startDate DateTime @default(now())
+  deadline  DateTime
+  status    String   @default("TODO") // TODO, IN_PROGRESS, DONE, EXPIRED
+  priority  Int      @default(2)      // 1: Low, 2: Med, 3: High
+  progress  Int      @default(0)      // 0 - 100
+  createdAt DateTime @default(now())
+
+  // Relasi ke User (Tugas Pribadi)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  // Relasi ke Group (Tugas Grup)
+  groupId   String?
+  group     Group?   @relation(fields: [groupId], references: [id])
+
+  // Relasi ke Schedule (opsional)
+  scheduleId String?
+  schedule   Schedule? @relation(fields: [scheduleId], references: [id])
+}
+
+model Schedule {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  type        String   @default("EVENT") // EVENT, MEETING, TASK_REMINDER
+  color       String   @default("purple") // purple, blue, green, orange, red
+  importance  String   @default("NORMAL") // LOW, NORMAL, HIGH
+  progress    Int      @default(0)        // 0 - 100
+  createdAt   DateTime @default(now())
+
+  // Relasi ke User
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  // Relasi ke Group (opsional)
+  groupId     String?
+  group       Group?   @relation(fields: [groupId], references: [id])
+
+  // Tugas terkait jadwal
+  tasks       Task[]
+}
+
+model UserFriend {
+  id          String   @id @default(uuid())
+  userId      String
+  friendId    String
+  createdAt   DateTime @default(now())
+
+  user        User     @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
+  friend      User     @relation("FriendOf", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model FriendRequest {
+  id          String               @id @default(uuid())
+  senderId    String
+  receiverId  String
+  status      FriendRequestStatus  @default(PENDING)
+  createdAt   DateTime             @default(now())
+
+  sender   User @relation("FriendRequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("FriendRequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId])
+  @@index([senderId])
+}
+
+enum GroupRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum GroupInviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model GroupMember {
+  id                String    @id @default(uuid())
+  userId            String
+  groupId           String
+  role              GroupRole @default(MEMBER)
+  canCreateSchedule Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+model GroupInvite {
+  id         String             @id @default(uuid())
+  groupId    String
+  inviterId  String
+  inviteeId  String
+  status     GroupInviteStatus  @default(PENDING)
+  createdAt  DateTime           @default(now())
+
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter User  @relation("GroupInviteSender", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User  @relation("GroupInviteReceiver", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, inviteeId])
+  @@index([groupId])
+  @@index([inviteeId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  createdAt   DateTime @default(now())
+
+  senderId    String
+  sender      User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Group chat
+  groupId     String?
+  group       Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // Direct message
+  recipientId String?
+  recipient   User?    @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([groupId])
+  @@index([recipientId])
+}
