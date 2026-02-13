@@ -11,16 +11,60 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 
+class SearchUsersByEmailDto {
+  email: string;
+}
+
+class SearchUsersByNameDto {
+  name: string;
+}
+
+class SearchUsersByIdDto {
+  id: string;
+}
+
+class RequestFriendDto {
+  userCode?: string;
+  friendId?: string;
+}
+
+class CreateGroupDto {
+  name: string;
+}
+
+class AddMemberToGroupDto {
+  userId: string;
+  canCreateSchedule?: boolean;
+}
+
+class InviteToGroupDto {
+  userId: string;
+}
+
+class UpdateGroupNameDto {
+  name: string;
+}
+
+class TransferAdminDto {
+  targetUserId: string;
+}
+
+@ApiTags('Social')
+@ApiBearerAuth()
 @Controller('social')
 @UseGuards(JwtAuthGuard)
 export class SocialController {
   constructor(private prisma: PrismaService) {}
 
   @Get('friends')
+  @ApiOperation({ summary: 'Get all friends' })
+  @ApiResponse({ status: 200, description: 'Friends retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getFriends(@CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -33,6 +77,10 @@ export class SocialController {
   }
 
   @Post('friends/search')
+  @ApiOperation({ summary: 'Search users by email' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: SearchUsersByEmailDto })
   async searchUsers(@Body('email') email: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -57,6 +105,10 @@ export class SocialController {
   }
 
   @Post('friends/search-name')
+  @ApiOperation({ summary: 'Search users by name or user code' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: SearchUsersByNameDto })
   async searchUsersByName(@Body('name') name: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -85,6 +137,10 @@ export class SocialController {
   }
 
   @Post('friends/search-id')
+  @ApiOperation({ summary: 'Search user by ID' })
+  @ApiResponse({ status: 200, description: 'User retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: SearchUsersByIdDto })
   async searchUsersById(@Body('id') id: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -109,6 +165,11 @@ export class SocialController {
   }
 
   @Post('friends/request')
+  @ApiOperation({ summary: 'Send friend request' })
+  @ApiResponse({ status: 201, description: 'Friend request sent' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiBody({ type: RequestFriendDto })
   async requestFriend(
     @Body('userCode') userCode: string,
     @Body('friendId') friendId: string,
@@ -183,6 +244,9 @@ export class SocialController {
   }
 
   @Get('friends/requests')
+  @ApiOperation({ summary: 'Get received friend requests' })
+  @ApiResponse({ status: 200, description: 'Friend requests retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getFriendRequests(@CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -195,6 +259,9 @@ export class SocialController {
   }
 
   @Get('friends/requests/sent')
+  @ApiOperation({ summary: 'Get sent friend requests' })
+  @ApiResponse({ status: 200, description: 'Sent requests retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getSentFriendRequests(@CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -207,6 +274,11 @@ export class SocialController {
   }
 
   @Post('friends/requests/:id/accept')
+  @ApiOperation({ summary: 'Accept friend request' })
+  @ApiResponse({ status: 200, description: 'Friend request accepted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Request not found' })
+  @ApiParam({ name: 'id', description: 'Request ID' })
   async acceptFriendRequest(@Param('id') id: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -233,6 +305,11 @@ export class SocialController {
   }
 
   @Post('friends/requests/:id/reject')
+  @ApiOperation({ summary: 'Reject friend request' })
+  @ApiResponse({ status: 200, description: 'Friend request rejected' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Request not found' })
+  @ApiParam({ name: 'id', description: 'Request ID' })
   async rejectFriendRequest(@Param('id') id: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -249,6 +326,10 @@ export class SocialController {
   }
 
   @Delete('friends/:friendId')
+  @ApiOperation({ summary: 'Remove friend' })
+  @ApiResponse({ status: 200, description: 'Friend removed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiParam({ name: 'friendId', description: 'Friend ID' })
   async removeFriend(@Param('friendId') friendId: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -263,6 +344,9 @@ export class SocialController {
   }
 
   @Get('groups')
+  @ApiOperation({ summary: 'Get all groups' })
+  @ApiResponse({ status: 200, description: 'Groups retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getGroups(@CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -292,6 +376,10 @@ export class SocialController {
   }
 
   @Post('groups')
+  @ApiOperation({ summary: 'Create a new group' })
+  @ApiResponse({ status: 201, description: 'Group created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: CreateGroupDto })
   async createGroup(@Body('name') name: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -329,6 +417,12 @@ export class SocialController {
   }
 
   @Post('groups/:groupId/members')
+  @ApiOperation({ summary: 'Add member to group' })
+  @ApiResponse({ status: 200, description: 'Member added' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  @ApiBody({ type: AddMemberToGroupDto })
   async addMemberToGroup(
     @Param('groupId') groupId: string,
     @Body('userId') memberId: string,
@@ -399,6 +493,12 @@ export class SocialController {
   }
 
   @Post('groups/:groupId/invites')
+  @ApiOperation({ summary: 'Invite user to group' })
+  @ApiResponse({ status: 201, description: 'Invite sent' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  @ApiBody({ type: InviteToGroupDto })
   async inviteToGroup(
     @Param('groupId') groupId: string,
     @Body('userId') inviteeId: string,
@@ -447,6 +547,9 @@ export class SocialController {
   }
 
   @Get('groups/invites')
+  @ApiOperation({ summary: 'Get group invites' })
+  @ApiResponse({ status: 200, description: 'Invites retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getGroupInvites(@CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -462,6 +565,11 @@ export class SocialController {
   }
 
   @Post('groups/invites/:id/accept')
+  @ApiOperation({ summary: 'Accept group invite' })
+  @ApiResponse({ status: 200, description: 'Invite accepted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Invite not found' })
+  @ApiParam({ name: 'id', description: 'Invite ID' })
   async acceptGroupInvite(@Param('id') id: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -491,6 +599,11 @@ export class SocialController {
   }
 
   @Post('groups/invites/:id/reject')
+  @ApiOperation({ summary: 'Reject group invite' })
+  @ApiResponse({ status: 200, description: 'Invite rejected' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Invite not found' })
+  @ApiParam({ name: 'id', description: 'Invite ID' })
   async rejectGroupInvite(@Param('id') id: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -507,6 +620,12 @@ export class SocialController {
   }
 
   @Get('users/:id/profile')
+  @ApiOperation({ summary: 'Get user profile' })
+  @ApiResponse({ status: 200, description: 'Profile retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiQuery({ name: 'groupId', required: false, description: 'Group ID (optional)' })
   async getUserProfile(
     @Param('id') targetId: string,
     @CurrentUser() user: any,
@@ -560,6 +679,12 @@ export class SocialController {
   }
 
   @Patch('groups/:groupId')
+  @ApiOperation({ summary: 'Update group name' })
+  @ApiResponse({ status: 200, description: 'Group updated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  @ApiBody({ type: UpdateGroupNameDto })
   async updateGroupName(
     @Param('groupId') groupId: string,
     @Body('name') name: string,
@@ -584,6 +709,12 @@ export class SocialController {
   }
 
   @Post('groups/:groupId/members/:memberId/remove')
+  @ApiOperation({ summary: 'Remove member from group' })
+  @ApiResponse({ status: 200, description: 'Member removed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  @ApiParam({ name: 'memberId', description: 'Member ID' })
   async removeGroupMember(
     @Param('groupId') groupId: string,
     @Param('memberId') memberId: string,
@@ -605,6 +736,12 @@ export class SocialController {
   }
 
   @Post('groups/:groupId/members/:memberId/promote')
+  @ApiOperation({ summary: 'Promote member to moderator' })
+  @ApiResponse({ status: 200, description: 'Member promoted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  @ApiParam({ name: 'memberId', description: 'Member ID' })
   async promoteToModerator(
     @Param('groupId') groupId: string,
     @Param('memberId') memberId: string,
@@ -627,6 +764,12 @@ export class SocialController {
   }
 
   @Post('groups/:groupId/members/:memberId/demote')
+  @ApiOperation({ summary: 'Demote moderator to member' })
+  @ApiResponse({ status: 200, description: 'Member demoted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  @ApiParam({ name: 'memberId', description: 'Member ID' })
   async demoteToMember(
     @Param('groupId') groupId: string,
     @Param('memberId') memberId: string,
@@ -649,6 +792,12 @@ export class SocialController {
   }
 
   @Post('groups/:groupId/transfer-admin')
+  @ApiOperation({ summary: 'Transfer admin role' })
+  @ApiResponse({ status: 200, description: 'Admin transferred' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  @ApiBody({ type: TransferAdminDto })
   async transferAdmin(
     @Param('groupId') groupId: string,
     @Body('targetUserId') targetUserId: string,

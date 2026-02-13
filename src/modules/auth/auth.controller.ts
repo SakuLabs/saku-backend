@@ -1,11 +1,28 @@
 import { Controller, Post, Body, BadRequestException, HttpException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 
+class RegisterDto {
+  email: string;
+  password: string;
+  name: string;
+}
+
+class LoginDto {
+  email: string;
+  password: string;
+}
+
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({ status: 201, description: 'User successfully registered' })
+  @ApiResponse({ status: 400, description: 'Bad request - missing fields or user already exists' })
+  @ApiBody({ type: RegisterDto })
   async register(@Body() body: any) {
     if (!body.email || !body.password || !body.name) {
       throw new BadRequestException('Email, password, dan name harus diisi');
@@ -21,6 +38,10 @@ export class AuthController {
   }
 
   @Post('login')
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiResponse({ status: 200, description: 'User successfully logged in' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid credentials' })
+  @ApiBody({ type: LoginDto })
   async login(@Body() body: any) {
     if (!body.email || !body.password) {
       throw new BadRequestException('Email dan password harus diisi');

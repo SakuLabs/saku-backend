@@ -1,10 +1,21 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CreateTaskUseCase } from '../application/use-cases/create-task.use-case';
 import type { ITaskRepository } from '../domain/task.repository.interface';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/user.decorator';
 
+class UpdateTaskStatusDto {
+  status: 'IN_PROGRESS' | 'DONE';
+}
+
+class UpdateTaskProgressDto {
+  progress: number;
+}
+
+@ApiTags('Tasks')
+@ApiBearerAuth()
 @Controller('tasks')
 @UseGuards(JwtAuthGuard)
 export class TaskController {
@@ -14,6 +25,9 @@ export class TaskController {
   ) {}
 
   @Get()
+  @ApiOperation({ summary: 'Get all tasks for current user' })
+  @ApiResponse({ status: 200, description: 'Tasks retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAll(@CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -22,6 +36,10 @@ export class TaskController {
   }
 
   @Post()
+  @ApiOperation({ summary: 'Create a new task' })
+  @ApiResponse({ status: 201, description: 'Task created successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: CreateTaskDto })
   async create(@Body() dto: CreateTaskDto, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -30,6 +48,12 @@ export class TaskController {
   }
 
   @Patch(':id/status')
+  @ApiOperation({ summary: 'Update task status' })
+  @ApiResponse({ status: 200, description: 'Task status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiParam({ name: 'id', description: 'Task ID' })
+  @ApiBody({ type: UpdateTaskStatusDto })
   async updateStatus(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -64,6 +88,12 @@ export class TaskController {
   }
 
   @Patch(':id/progress')
+  @ApiOperation({ summary: 'Update task progress' })
+  @ApiResponse({ status: 200, description: 'Task progress updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiParam({ name: 'id', description: 'Task ID' })
+  @ApiBody({ type: UpdateTaskProgressDto })
   async updateProgress(
     @Param('id') id: string,
     @Body('progress') progress: number,
@@ -88,6 +118,11 @@ export class TaskController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete a task' })
+  @ApiResponse({ status: 200, description: 'Task deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiParam({ name: 'id', description: 'Task ID' })
   async remove(@Param('id') id: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');

@@ -10,6 +10,7 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CreateScheduleUseCase } from '../application/use-cases/create-schedule.use-case';
 import type { IScheduleRepository } from '../domain/schedule.repository.interface';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
@@ -19,6 +20,13 @@ import { CurrentUser } from '../../../common/decorators/user.decorator';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Schedule, ScheduleType, ScheduleColor, ScheduleImportance } from '../domain/schedule.entity';
 
+class CheckConflictsDto {
+  startTime: string;
+  endTime: string;
+}
+
+@ApiTags('Schedules')
+@ApiBearerAuth()
 @Controller('schedules')
 @UseGuards(JwtAuthGuard)
 export class ScheduleController {
@@ -30,6 +38,9 @@ export class ScheduleController {
   ) {}
 
   @Get()
+  @ApiOperation({ summary: 'Get all schedules for current user' })
+  @ApiResponse({ status: 200, description: 'Schedules retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAll(@CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -38,6 +49,10 @@ export class ScheduleController {
   }
 
   @Post('conflicts')
+  @ApiOperation({ summary: 'Check for schedule conflicts' })
+  @ApiResponse({ status: 200, description: 'Conflict check completed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: CheckConflictsDto })
   async checkConflicts(
     @Body('startTime') startTime: string,
     @Body('endTime') endTime: string,
@@ -58,6 +73,11 @@ export class ScheduleController {
   }
 
   @Post()
+  @ApiOperation({ summary: 'Create a new schedule' })
+  @ApiResponse({ status: 201, description: 'Schedule created successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - no access to group' })
+  @ApiBody({ type: CreateScheduleDto })
   async create(@Body() dto: CreateScheduleDto, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -84,6 +104,13 @@ export class ScheduleController {
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a schedule' })
+  @ApiResponse({ status: 200, description: 'Schedule updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - no access to schedule' })
+  @ApiResponse({ status: 404, description: 'Schedule not found' })
+  @ApiParam({ name: 'id', description: 'Schedule ID' })
+  @ApiBody({ type: UpdateScheduleDto })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateScheduleDto,
@@ -153,6 +180,11 @@ export class ScheduleController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete a schedule' })
+  @ApiResponse({ status: 200, description: 'Schedule deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Schedule not found' })
+  @ApiParam({ name: 'id', description: 'Schedule ID' })
   async delete(@Param('id') id: string, @CurrentUser() user: any) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
