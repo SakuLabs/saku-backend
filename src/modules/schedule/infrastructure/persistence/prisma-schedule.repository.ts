@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { IScheduleRepository } from '../../domain/schedule.repository.interface';
 import { Schedule, ScheduleType, ScheduleColor } from '../../domain/schedule.entity';
-import { PrismaService } from '../../../../../prisma/prisma.service';
+import { PrismaService } from '../../../../prisma/prisma.service';
 
 @Injectable()
 export class PrismaScheduleRepository implements IScheduleRepository {

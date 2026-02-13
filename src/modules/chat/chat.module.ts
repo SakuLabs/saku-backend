@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
-import { PrismaModule } from '../../../prisma/prisma.module';
+import { PrismaModule } from '../../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ChatController } from './chat.controller';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';

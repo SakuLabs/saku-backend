@@ -15,7 +15,7 @@ import { Readable } from 'stream';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)

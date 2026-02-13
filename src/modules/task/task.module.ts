@@ -4,7 +4,7 @@ import { CreateTaskUseCase } from './application/use-cases/create-task.use-case'
 import { PrismaTaskRepository } from './infrastructure/persistence/prisma-task.repository';
 import { TaskReminderService } from './infrastructure/scheduler/task-reminder.service';
 import { ITaskRepository } from './domain/task.repository.interface';
-import { PrismaModule } from '../../../prisma/prisma.module';
+import { PrismaModule } from '../../prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';

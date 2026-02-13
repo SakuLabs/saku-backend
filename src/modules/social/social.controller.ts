@@ -11,7 +11,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 

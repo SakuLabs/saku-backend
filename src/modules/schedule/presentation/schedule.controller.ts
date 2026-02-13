@@ -16,7 +16,7 @@ import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/user.decorator';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { Schedule, ScheduleType, ScheduleColor, ScheduleImportance } from '../domain/schedule.entity';
 
 @Controller('schedules')
