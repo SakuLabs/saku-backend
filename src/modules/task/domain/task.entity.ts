@@ -9,6 +9,7 @@ export class Task {
   constructor(
     public readonly id: string,
     public title: string,
+    public description: string,
     public startDate: Date,
     public deadline: Date,
     public priority: number, // 1: Low, 2: Medium, 3: High

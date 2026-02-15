@@ -56,7 +56,7 @@ export class TaskController {
           title: 'Study for exam',
           description: 'Review chapters 1-5',
           priority: 'MEDIUM',
-          dueDate: '2024-02-20T10:00:00Z'
+          deadline: '2024-02-20T10:00:00Z'
         }
       }
     }

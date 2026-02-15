@@ -23,6 +23,7 @@ export class PrismaTaskRepository implements ITaskRepository {
       create: {
         id: task.id,
         title: task.title,
+        description: task.description,
         startDate: task.startDate,
         deadline: task.deadline,
         priority: task.priority,
@@ -41,6 +42,7 @@ export class PrismaTaskRepository implements ITaskRepository {
     return new Task(
       data.id,
       data.title,
+      data.description,
       data.startDate,
       data.deadline,
       data.priority,
@@ -58,6 +60,7 @@ export class PrismaTaskRepository implements ITaskRepository {
         new Task(
           t.id,
           t.title,
+          t.description,
           t.startDate,
           t.deadline,
           t.priority,

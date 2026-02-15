@@ -66,6 +66,7 @@ model Group {
 model Task {
   id        String   @id @default(uuid())
   title     String
+  description String @default("")
   startDate DateTime @default(now())
   deadline  DateTime
   status    String   @default("TODO") // TODO, IN_PROGRESS, DONE, EXPIRED
