@@ -43,3 +43,6 @@ README.md
 *.log
 .cache
 .temp
+
+# Note: We DO NOT exclude src/generated as it contains the Prisma client
+# that needs to be included in the Docker build

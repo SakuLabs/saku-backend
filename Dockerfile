@@ -14,11 +14,16 @@ RUN npm ci --only=production=false
 # Copy source code
 COPY . .
 
+# Set DATABASE_URL for Prisma generation (use placeholder for build)
+# This is only needed for generating the Prisma client, not for actual database connection
+ARG DATABASE_URL="postgresql://user:password@localhost:5432/campus_scheduler?schema=public"
+ENV DATABASE_URL=${DATABASE_URL}
+
+# Generate Prisma client first (before build, as it's needed for TypeScript compilation)
+RUN npx prisma generate
+
 # Build the NestJS application
 RUN npm run build
-
-# Generate Prisma client
-RUN npx prisma generate
 
 # Stage 2: Production stage
 FROM node:20-alpine
@@ -38,14 +43,15 @@ RUN npm ci --only=production
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/prisma ./prisma
 
 # Copy Prisma schema and migrations
-COPY prisma ./prisma
+COPY --from=builder /app/prisma ./prisma
 
-# Generate Prisma client for production
-RUN npx prisma generate
+# Copy generated Prisma client from builder stage (custom output path)
+COPY --from=builder /app/src/generated ./src/generated
+
+# Copy Prisma client from node_modules (for runtime)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Expose Hugging Face default port
 EXPOSE 7860
