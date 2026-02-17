@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Hugging Face Spaces
 # Stage 1: Build stage
-FROM oven/bun:1.1-alpine AS builder
+FROM oven/bun:1.3-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -26,7 +26,7 @@ RUN bunx prisma generate
 RUN bun run build
 
 # Stage 2: Production stage
-FROM oven/bun:1.1-alpine
+FROM oven/bun:1.3-alpine
 
 # Set working directory
 WORKDIR /app
