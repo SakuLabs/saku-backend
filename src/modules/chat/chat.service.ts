@@ -20,7 +20,7 @@ export class ChatService {
 
   async createDirectMessage(senderId: string, recipientId: string, content: string) {
     return await this.prisma.message.create({
-      data: { senderId, recipientId, content },
+      data: { senderId, recipientId, content, directMessageUserId: recipientId },
       include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
     });
   }

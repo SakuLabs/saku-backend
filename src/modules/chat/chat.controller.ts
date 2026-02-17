@@ -1,8 +1,14 @@
-import { Controller, Get, Param, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Post, Param, Body, UseGuards, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { ChatService } from './chat.service';
+
+interface SendMessageDto {
+  content: string;
+  groupId?: string;
+  directMessageUserId?: string;
+}
 
 @ApiTags('Chat')
 @ApiBearerAuth()
@@ -52,5 +58,52 @@ export class ChatController {
       throw new BadRequestException('Hanya bisa DM teman');
     }
     return await this.chatService.getDirectMessages(user.sub, otherUserId);
+  }
+
+  @Post('messages')
+  @ApiOperation({ summary: 'Send a message (group or direct)' })
+  @ApiResponse({ status: 201, description: 'Message sent successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiBody({ type: Object, description: 'Message payload with content, groupId, or directMessageUserId' })
+  async sendMessage(
+    @Body() body: SendMessageDto,
+    @CurrentUser() user: any,
+  ) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+    if (!body?.content?.trim()) {
+      throw new BadRequestException('Content tidak boleh kosong');
+    }
+
+    // Send group message
+    if (body.groupId) {
+      const member = await this.chatService.isGroupMember(body.groupId, user.sub);
+      if (!member) {
+        throw new BadRequestException('Anda bukan anggota grup ini');
+      }
+      return await this.chatService.createGroupMessage(
+        body.groupId,
+        user.sub,
+        body.content.trim(),
+      );
+    }
+
+    // Send direct message
+    if (body.directMessageUserId) {
+      const ok = await this.chatService.areFriends(user.sub, body.directMessageUserId);
+      if (!ok) {
+        throw new BadRequestException('Hanya bisa DM teman');
+      }
+      return await this.chatService.createDirectMessage(
+        user.sub,
+        body.directMessageUserId,
+        body.content.trim(),
+      );
+    }
+
+    throw new BadRequestException('groupId atau directMessageUserId harus diisi');
   }
 }
