@@ -33,6 +33,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const payload = this.jwtService.verify(token);
       client.data.userId = payload.sub;
+      // Join user's personal room for receiving friend requests
+      client.join(`user:${payload.sub}`);
     } catch {
       client.disconnect();
     }
@@ -129,6 +131,55 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
       this.server.to(this.dmRoom(userId, body.recipientId)).emit('receive_message', message);
     }
+  }
+
+  @SubscribeMessage('typing')
+  async onTyping(
+    @MessageBody()
+    body: { isTyping: boolean; groupId?: string; directMessageUserId?: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId) return;
+
+    // Broadcast typing status to relevant room
+    if (body.groupId) {
+      const member = await this.chatService.isGroupMember(body.groupId, userId);
+      if (!member) return;
+      this.server.to(this.groupRoom(body.groupId)).emit('typing', {
+        userId,
+        isTyping: body.isTyping,
+        groupId: body.groupId,
+      });
+    } else if (body.directMessageUserId) {
+      const ok = await this.chatService.areFriends(userId, body.directMessageUserId);
+      if (!ok) return;
+      const room = this.dmRoom(userId, body.directMessageUserId);
+      this.server.to(room).emit('typing', {
+        userId,
+        isTyping: body.isTyping,
+        directMessageUserId: body.directMessageUserId,
+      });
+    }
+  }
+
+  @SubscribeMessage('friendRequest')
+  async onFriendRequest(
+    @MessageBody()
+    body: { recipientId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId || !body?.recipientId) return;
+
+    // Find recipient's socket and send friend request notification
+    const recipientSockets = await this.server.in(`user:${body.recipientId}`).fetchSockets();
+    recipientSockets.forEach(socket => {
+      socket.emit('friendRequest', {
+        senderId: userId,
+        recipientId: body.recipientId,
+      });
+    });
   }
 
   private groupRoom(groupId: string) {
