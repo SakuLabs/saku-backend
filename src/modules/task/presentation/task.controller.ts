@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CreateTaskUseCase } from '../application/use-cases/create-task.use-case';
 import type { ITaskRepository } from '../domain/task.repository.interface';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/user.decorator';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 class UpdateTaskStatusDto {
   status: 'IN_PROGRESS' | 'DONE';
@@ -22,7 +23,59 @@ export class TaskController {
   constructor(
     private readonly createTask: CreateTaskUseCase,
     @Inject('ITaskRepository') private readonly repo: ITaskRepository,
+    private readonly prisma: PrismaService,
   ) {}
+
+  private toTaskResponse(task: any) {
+    return {
+      id: task.id,
+      userId: task.userId,
+      title: task.title,
+      description: task.description,
+      priority: task.priority === 1 ? 'LOW' : task.priority === 3 ? 'HIGH' : 'MEDIUM',
+      status: task.status,
+      progress: task.progress,
+      dueDate: task.deadline,
+      scheduleId: task.scheduleId,
+      groupId: task.groupId,
+      createdAt: task.createdAt,
+      updatedAt: task.createdAt,
+    };
+  }
+
+  // Handle date-only inputs from HTML <input type="date"> by setting end-of-day deadline.
+  private parseDeadline(raw?: string): Date | null {
+    if (!raw) return null;
+    const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+    if (dateOnlyPattern.test(raw)) {
+      return new Date(`${raw}T23:59:59.999`);
+    }
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return null;
+
+    // If frontend sends ISO at midnight (common from date picker),
+    // normalize it to end-of-day to avoid false "past deadline" from timezone shifts.
+    const isMidnightUtc =
+      parsed.getUTCHours() === 0 &&
+      parsed.getUTCMinutes() === 0 &&
+      parsed.getUTCSeconds() === 0 &&
+      parsed.getUTCMilliseconds() === 0;
+    if (isMidnightUtc) {
+      return new Date(
+        Date.UTC(
+          parsed.getUTCFullYear(),
+          parsed.getUTCMonth(),
+          parsed.getUTCDate(),
+          23,
+          59,
+          59,
+          999,
+        ),
+      );
+    }
+
+    return parsed;
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all tasks for current user' })
@@ -32,7 +85,16 @@ export class TaskController {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
-    return await this.repo.findAll(user.sub);
+    const tasks = await this.prisma.task.findMany({
+      where: {
+        OR: [
+          { userId: user.sub },
+          { group: { members: { some: { userId: user.sub } } } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return tasks.map((task) => this.toTaskResponse(task));
   }
 
   @Post()
@@ -65,7 +127,72 @@ export class TaskController {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
-    return await this.createTask.execute(dto, user.sub);
+    const task = await this.createTask.execute(dto, user.sub);
+    const created = await this.prisma.task.findUnique({ where: { id: task.id } });
+    return created ? this.toTaskResponse(created) : task;
+  }
+
+  @Post('group/:groupId')
+  @ApiOperation({ summary: 'Create a new group task (admin/moderator only)' })
+  @ApiResponse({ status: 201, description: 'Group task created successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  async createGroupTask(
+    @Param('groupId') groupId: string,
+    @Body() dto: CreateTaskDto,
+    @CurrentUser() user: any,
+  ) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+
+    const member = await this.prisma.groupMember.findFirst({
+      where: { groupId, userId: user.sub },
+    });
+    if (!member) {
+      throw new ForbiddenException('Anda bukan anggota grup ini');
+    }
+    if (member.role !== 'ADMIN' && member.role !== 'MODERATOR') {
+      throw new ForbiddenException('Hanya admin/moderator yang bisa membuat task grup');
+    }
+
+    const startDate = dto.startDate ? new Date(dto.startDate) : new Date();
+    const parsedDeadline = this.parseDeadline(dto.deadlineOrDueDate || dto.deadline || dto.dueDate);
+    const deadline = parsedDeadline ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    if (Number.isNaN(deadline.getTime())) {
+      throw new BadRequestException('Format deadline tidak valid');
+    }
+    // Small tolerance to avoid transient clock differences.
+    if (deadline.getTime() < Date.now() - 60_000) {
+      throw new BadRequestException('Deadline tidak boleh di masa lalu');
+    }
+
+    const priority = dto.priority ?? 'MEDIUM';
+    const priorityNumber = priority === 'LOW' ? 1 : priority === 'HIGH' ? 3 : 2;
+    const created = await this.prisma.task.create({
+      data: {
+        title: dto.title.trim(),
+        description: dto.description?.trim() || '',
+        startDate,
+        deadline,
+        priority: priorityNumber,
+        progress: typeof dto.progress === 'number' ? dto.progress : 0,
+        status: 'TODO',
+        userId: user.sub,
+        groupId,
+      },
+    });
+
+    await this.prisma.message.create({
+      data: {
+        senderId: user.sub,
+        groupId,
+        content: `[GROUP_TASK] ${dto.title.trim()}`,
+      },
+    });
+
+    return this.toTaskResponse(created);
   }
 
   @Patch(':id/status')

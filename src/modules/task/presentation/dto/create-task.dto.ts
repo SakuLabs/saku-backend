@@ -31,6 +31,12 @@ export class CreateTaskDto {
   @IsDateString()
   dueDate?: string;
 
+  // Accepted to prevent ValidationPipe (forbidNonWhitelisted) from rejecting
+  // frontend payloads that include groupId when creating group tasks.
+  @IsOptional()
+  @IsString()
+  groupId?: string;
+
   @IsOptional()
   @Transform(({ obj }) => obj.deadline || obj.dueDate)
   deadlineOrDueDate?: string;

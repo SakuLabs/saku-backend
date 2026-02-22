@@ -99,8 +99,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       body.recipientId,
       body.content.trim(),
     );
-    const room = this.dmRoom(userId, body.recipientId);
-    this.server.to(room).emit('receive_message', message);
+    this.emitDirectMessage(userId, body.recipientId, message);
   }
 
   @SubscribeMessage('send_message')
@@ -129,7 +128,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         body.recipientId,
         body.content.trim(),
       );
-      this.server.to(this.dmRoom(userId, body.recipientId)).emit('receive_message', message);
+      this.emitDirectMessage(userId, body.recipientId, message);
     }
   }
 
@@ -189,5 +188,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private dmRoom(a: string, b: string) {
     const [x, y] = [a, b].sort();
     return `dm:${x}:${y}`;
+  }
+
+  private emitDirectMessage(senderId: string, recipientId: string, message: unknown) {
+    const room = this.dmRoom(senderId, recipientId);
+    this.server.to(room).emit('receive_message', message);
+    this.server.to(`user:${senderId}`).emit('receive_message', message);
+    this.server.to(`user:${recipientId}`).emit('receive_message', message);
   }
 }

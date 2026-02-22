@@ -39,6 +39,7 @@ class CreateGroupDto {
 
 class AddMemberToGroupDto {
   userId: string;
+  userCode?: string;
   canCreateSchedule?: boolean;
 }
 
@@ -506,14 +507,15 @@ export class SocialController {
   async addMemberToGroup(
     @Param('groupId') groupId: string,
     @Body('userId') memberId: string,
+    @Body('userCode') userCode: string,
     @Body('canCreateSchedule') canCreateSchedule: boolean,
     @CurrentUser() user: any,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
-    if (!memberId) {
-      throw new BadRequestException('userId harus diisi');
+    if (!memberId && !userCode) {
+      throw new BadRequestException('userId atau userCode harus diisi');
     }
 
     // Verify group exists and current user is admin
@@ -525,21 +527,41 @@ export class SocialController {
       throw new ForbiddenException('Tidak memiliki akses menambah anggota');
     }
 
-    // Ensure target user exists
-    const targetUser = await this.prisma.user.findUnique({
-      where: { id: memberId },
-    });
+    // Resolve target by userId or userCode
+    const normalizedCode = (userCode || '').trim().toUpperCase();
+    const targetUser = memberId
+      ? await this.prisma.user.findUnique({ where: { id: memberId } })
+      : await this.prisma.user.findFirst({
+          where: { userCode: { equals: normalizedCode, mode: 'insensitive' } },
+        });
     if (!targetUser) {
       throw new BadRequestException('User tidak ditemukan');
     }
+    if (targetUser.id === user.sub) {
+      throw new BadRequestException('Tidak bisa menambahkan diri sendiri');
+    }
+
+    const isFriend = await this.prisma.userFriend.findFirst({
+      where: { userId: user.sub, friendId: targetUser.id },
+    });
+    if (!isFriend) {
+      throw new BadRequestException('Hanya bisa menambahkan user dari friendlist');
+    }
+
+    const alreadyMember = await this.prisma.groupMember.findFirst({
+      where: { groupId, userId: targetUser.id },
+    });
+    if (alreadyMember) {
+      throw new BadRequestException('User sudah menjadi anggota grup');
+    }
 
     await this.prisma.groupMember.upsert({
-      where: { userId_groupId: { userId: memberId, groupId } },
+      where: { userId_groupId: { userId: targetUser.id, groupId } },
       update: {
         canCreateSchedule: !!canCreateSchedule,
       },
       create: {
-        userId: memberId,
+        userId: targetUser.id,
         groupId,
         role: 'MEMBER',
         canCreateSchedule: !!canCreateSchedule,
@@ -823,14 +845,70 @@ export class SocialController {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
-    const member = await this.prisma.groupMember.findFirst({
+    const actor = await this.prisma.groupMember.findFirst({
       where: { groupId, userId: user.sub },
     });
-    if (!member || member.role !== 'ADMIN') {
-      throw new ForbiddenException('Hanya admin yang bisa menghapus anggota');
+    if (!actor || (actor.role !== 'ADMIN' && actor.role !== 'MODERATOR')) {
+      throw new ForbiddenException('Hanya admin/moderator yang bisa kick anggota');
     }
+    if (memberId === user.sub) {
+      throw new BadRequestException('Gunakan endpoint leave untuk keluar grup');
+    }
+
+    const target = await this.prisma.groupMember.findFirst({
+      where: { groupId, userId: memberId },
+    });
+    if (!target) {
+      throw new BadRequestException('Target bukan anggota grup');
+    }
+
+    if (actor.role === 'MODERATOR' && target.role !== 'MEMBER') {
+      throw new ForbiddenException('Moderator hanya bisa kick member');
+    }
+    if (target.role === 'ADMIN') {
+      throw new ForbiddenException('Admin tidak bisa di-kick');
+    }
+
     await this.prisma.groupMember.deleteMany({
       where: { groupId, userId: memberId },
+    });
+    return { ok: true };
+  }
+
+  @Post('groups/:groupId/leave')
+  @ApiOperation({ summary: 'Leave group' })
+  @ApiResponse({ status: 200, description: 'Left group successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiParam({ name: 'groupId', description: 'Group ID' })
+  async leaveGroup(
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+
+    const me = await this.prisma.groupMember.findFirst({
+      where: { groupId, userId: user.sub },
+    });
+    if (!me) {
+      throw new BadRequestException('Anda bukan anggota grup ini');
+    }
+
+    if (me.role === 'ADMIN') {
+      const memberCount = await this.prisma.groupMember.count({ where: { groupId } });
+      if (memberCount > 1) {
+        throw new ForbiddenException('Admin harus transfer admin dulu sebelum leave');
+      }
+      // Last member/admin leaving: remove membership and group cleanup.
+      await this.prisma.groupMember.deleteMany({ where: { groupId, userId: user.sub } });
+      await this.prisma.group.deleteMany({ where: { id: groupId } });
+      return { ok: true, deletedGroup: true };
+    }
+
+    await this.prisma.groupMember.deleteMany({
+      where: { groupId, userId: user.sub },
     });
     return { ok: true };
   }
@@ -856,8 +934,21 @@ export class SocialController {
     if (!member || member.role !== 'ADMIN') {
       throw new ForbiddenException('Hanya admin yang bisa promote');
     }
-    await this.prisma.groupMember.updateMany({
+    const targetMember = await this.prisma.groupMember.findFirst({
       where: { groupId, userId: memberId },
+    });
+    if (!targetMember) {
+      throw new BadRequestException('Target bukan anggota grup');
+    }
+    if (targetMember.role === 'ADMIN') {
+      throw new BadRequestException('Admin tidak bisa dipromote menjadi moderator');
+    }
+    if (targetMember.role === 'MODERATOR') {
+      return { ok: true, message: 'User sudah menjadi moderator' };
+    }
+
+    await this.prisma.groupMember.updateMany({
+      where: { groupId, userId: memberId, role: 'MEMBER' },
       data: { role: 'MODERATOR' },
     });
     return { ok: true };
@@ -884,8 +975,21 @@ export class SocialController {
     if (!member || member.role !== 'ADMIN') {
       throw new ForbiddenException('Hanya admin yang bisa demote');
     }
-    await this.prisma.groupMember.updateMany({
+    const targetMember = await this.prisma.groupMember.findFirst({
       where: { groupId, userId: memberId },
+    });
+    if (!targetMember) {
+      throw new BadRequestException('Target bukan anggota grup');
+    }
+    if (targetMember.role === 'ADMIN') {
+      throw new BadRequestException('Admin tidak bisa didemote lewat endpoint ini');
+    }
+    if (targetMember.role === 'MEMBER') {
+      return { ok: true, message: 'User sudah menjadi member' };
+    }
+
+    await this.prisma.groupMember.updateMany({
+      where: { groupId, userId: memberId, role: 'MODERATOR' },
       data: { role: 'MEMBER' },
     });
     return { ok: true };
@@ -931,14 +1035,20 @@ export class SocialController {
     if (!targetMember) {
       throw new BadRequestException('Target bukan anggota grup');
     }
-    await this.prisma.groupMember.updateMany({
-      where: { groupId, role: 'ADMIN' },
-      data: { role: 'MODERATOR' },
-    });
-    await this.prisma.groupMember.updateMany({
-      where: { groupId, userId: targetUserId },
-      data: { role: 'ADMIN' },
-    });
+    if (targetUserId === user.sub) {
+      return { ok: true, message: 'Anda sudah menjadi admin' };
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.groupMember.updateMany({
+        where: { groupId, role: 'ADMIN' },
+        data: { role: 'MODERATOR' },
+      }),
+      this.prisma.groupMember.updateMany({
+        where: { groupId, userId: targetUserId },
+        data: { role: 'ADMIN' },
+      }),
+    ]);
     return { ok: true };
   }
 }

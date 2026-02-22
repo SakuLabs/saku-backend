@@ -195,6 +195,7 @@ model Message {
   id          String   @id @default(uuid())
   content     String
   createdAt   DateTime @default(now())
+  readAt      DateTime?
 
   senderId    String
   sender      User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
@@ -214,4 +215,5 @@ model Message {
   @@index([groupId])
   @@index([recipientId])
   @@index([directMessageUserId])
+  @@index([readAt])
 }

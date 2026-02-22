@@ -26,26 +26,61 @@ export class ChatService {
   }
 
   async getGroupMessages(groupId: string, take = 50) {
-    return await this.prisma.message.findMany({
+    const rows = await this.prisma.message.findMany({
       where: { groupId },
-      orderBy: { createdAt: 'asc' },
+      // Fetch newest messages first, then reverse for chronological rendering.
+      orderBy: { createdAt: 'desc' },
       take,
       include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
     });
+    return rows.reverse();
   }
 
   async getDirectMessages(userId: string, otherUserId: string, take = 50) {
-    return await this.prisma.message.findMany({
+    const rows = await this.prisma.message.findMany({
       where: {
         OR: [
           { senderId: userId, recipientId: otherUserId },
           { senderId: otherUserId, recipientId: userId },
         ],
       },
-      orderBy: { createdAt: 'asc' },
+      // Fetch newest messages first, then reverse for chronological rendering.
+      orderBy: { createdAt: 'desc' },
       take,
       include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
     });
+    return rows.reverse();
+  }
+
+  async markDirectMessagesAsRead(currentUserId: string, otherUserId: string) {
+    await this.prisma.message.updateMany({
+      where: {
+        senderId: otherUserId,
+        recipientId: currentUserId,
+        readAt: null,
+      },
+      data: {
+        readAt: new Date(),
+      },
+    });
+  }
+
+  async getDirectUnreadCounts(userId: string) {
+    const rows = await this.prisma.message.groupBy({
+      by: ['senderId'],
+      where: {
+        recipientId: userId,
+        readAt: null,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    return rows.reduce<Record<string, number>>((acc, row) => {
+      acc[row.senderId] = row._count.id;
+      return acc;
+    }, {});
   }
 
   async areFriends(userId: string, otherUserId: string) {

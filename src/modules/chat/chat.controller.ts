@@ -17,6 +17,16 @@ interface SendMessageDto {
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
+  @Get('dm/unread/counts')
+  @ApiOperation({ summary: 'Get unread direct message counts grouped by senderId' })
+  @ApiResponse({ status: 200, description: 'Unread counts retrieved successfully' })
+  async getDirectUnreadCounts(@CurrentUser() user: any) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+    return await this.chatService.getDirectUnreadCounts(user.sub);
+  }
+
   @Get('group/:groupId')
   @ApiOperation({ summary: 'Get messages for a group' })
   @ApiResponse({ status: 200, description: 'Messages retrieved successfully' })
@@ -57,7 +67,29 @@ export class ChatController {
     if (!ok) {
       throw new BadRequestException('Hanya bisa DM teman');
     }
+    await this.chatService.markDirectMessagesAsRead(user.sub, otherUserId);
     return await this.chatService.getDirectMessages(user.sub, otherUserId);
+  }
+
+  @Post('dm/:userId/read')
+  @ApiOperation({ summary: 'Mark direct messages from a user as read' })
+  @ApiResponse({ status: 200, description: 'Messages marked as read' })
+  async markDirectMessagesAsRead(
+    @Param('userId') otherUserId: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+    if (!otherUserId) {
+      throw new BadRequestException('userId harus diisi');
+    }
+    const ok = await this.chatService.areFriends(user.sub, otherUserId);
+    if (!ok) {
+      throw new BadRequestException('Hanya bisa DM teman');
+    }
+    await this.chatService.markDirectMessagesAsRead(user.sub, otherUserId);
+    return { success: true };
   }
 
   @Post('messages')
