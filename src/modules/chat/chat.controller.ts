@@ -1,5 +1,9 @@
-import { Controller, Get, Post, Param, Body, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Param, Body, UseGuards, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import { Readable } from 'stream';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { ChatService } from './chat.service';
@@ -16,6 +20,17 @@ interface SendMessageDto {
 @UseGuards(JwtAuthGuard)
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
+
+  private ensureCloudinaryConfigured() {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      throw new BadRequestException('Cloudinary belum dikonfigurasi di .env');
+    }
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+  }
 
   @Get('dm/unread/counts')
   @ApiOperation({ summary: 'Get unread direct message counts grouped by senderId' })
@@ -137,5 +152,62 @@ export class ChatController {
     }
 
     throw new BadRequestException('groupId atau directMessageUserId harus diisi');
+  }
+
+  @Post('attachments')
+  @ApiOperation({ summary: 'Upload chat attachment to Cloudinary' })
+  @ApiResponse({ status: 201, description: 'Attachment uploaded successfully' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 50 * 1024 },
+    }),
+  )
+  async uploadAttachment(@CurrentUser() user: any, @UploadedFile() file?: Express.Multer.File) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+    if (!file?.buffer) {
+      throw new BadRequestException('File wajib diisi');
+    }
+    if (file.size > 50 * 1024) {
+      throw new BadRequestException('Ukuran file maksimal 50 KB');
+    }
+
+    this.ensureCloudinaryConfigured();
+
+    const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'mahatask/chat-attachments',
+          resource_type: 'auto',
+        },
+        (error, result) => {
+          if (error || !result) return reject(error || new Error('Upload gagal'));
+          resolve(result as { secure_url: string });
+        },
+      );
+      Readable.from(file.buffer).pipe(uploadStream);
+    });
+
+    return {
+      url: uploaded.secure_url,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    };
   }
 }

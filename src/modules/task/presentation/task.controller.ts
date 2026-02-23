@@ -1,11 +1,13 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, BadRequestException, ForbiddenException, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CreateTaskUseCase } from '../application/use-cases/create-task.use-case';
 import type { ITaskRepository } from '../domain/task.repository.interface';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { RecommendTasksDto } from './dto/recommend-tasks.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/user.decorator';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RecommendTasksUseCase } from '../application/use-cases/recommend-tasks.use-case';
 
 class UpdateTaskStatusDto {
   status: 'IN_PROGRESS' | 'DONE';
@@ -22,6 +24,7 @@ class UpdateTaskProgressDto {
 export class TaskController {
   constructor(
     private readonly createTask: CreateTaskUseCase,
+    private readonly recommendTasks: RecommendTasksUseCase,
     @Inject('ITaskRepository') private readonly repo: ITaskRepository,
     private readonly prisma: PrismaService,
   ) {}
@@ -95,6 +98,20 @@ export class TaskController {
       orderBy: { createdAt: 'desc' },
     });
     return tasks.map((task) => this.toTaskResponse(task));
+  }
+
+  @Get('recommendations')
+  @ApiOperation({ summary: 'Get recommended task order based on priority and deadline' })
+  @ApiResponse({ status: 200, description: 'Task recommendations generated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getRecommendations(
+    @CurrentUser() user: any,
+    @Query() query: RecommendTasksDto,
+  ) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+    return await this.recommendTasks.execute(user.sub, query);
   }
 
   @Post()

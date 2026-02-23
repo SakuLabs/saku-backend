@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TaskController } from './presentation/task.controller';
 import { CreateTaskUseCase } from './application/use-cases/create-task.use-case';
+import { RecommendTasksUseCase } from './application/use-cases/recommend-tasks.use-case';
 import { PrismaTaskRepository } from './infrastructure/persistence/prisma-task.repository';
 import { TaskReminderService } from './infrastructure/scheduler/task-reminder.service';
 import { ITaskRepository } from './domain/task.repository.interface';
@@ -21,6 +22,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
   controllers: [TaskController],
   providers: [
     CreateTaskUseCase,
+    RecommendTasksUseCase,
     TaskReminderService,
     JwtAuthGuard,
     {

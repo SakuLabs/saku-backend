@@ -12,12 +12,10 @@ export class JwtAuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers.authorization;
+    const authHeader = request.headers.authorization as string | undefined;
 
-    if (!authHeader) {
-      // Allow request to continue but set user as null
-      request.user = null;
-      return true;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Missing or invalid Authorization header');
     }
 
     try {
@@ -25,9 +23,8 @@ export class JwtAuthGuard implements CanActivate {
       const payload = this.jwtService.verify(token);
       request.user = payload;
       return true;
-    } catch (error) {
-      request.user = null;
-      return true; // Allow request but user will be null
+    } catch {
+      throw new UnauthorizedException('Invalid or expired token');
     }
   }
 }
