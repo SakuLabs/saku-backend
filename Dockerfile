@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Hugging Face Spaces
+# Multi-stage Dockerfile for Railway (or any container platform)
 # Stage 1: Build stage
 FROM oven/bun:1.3-alpine AS builder
 
@@ -36,7 +36,8 @@ WORKDIR /app
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=7860
+# Railway injects PORT at runtime; fallback for local docker run
+ENV PORT=3001
 
 # Copy package files
 COPY package.json bun.lock ./
@@ -56,12 +57,12 @@ COPY --from=builder /app/prisma ./prisma
 # Copy generated Prisma client from builder stage (correct path: src/generated/prisma)
 COPY --from=builder /app/src/generated ./src/generated
 
-# Expose Hugging Face default port
-EXPOSE 7860
+EXPOSE 3001
 
-# Health check
+# Health check — hits the OpenAPI JSON endpoint (no auth needed for spec? actually behind basic auth).
+# Use a lightweight TCP-style check instead.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:7860/api', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3001) + '/', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Start the application
 CMD ["bun", "run", "start:prod"]
