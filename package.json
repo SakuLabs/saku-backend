@@ -178,6 +178,30 @@
         "lines": 80,
         "statements": 80,
         "functions": 80
+      },
+      "src/modules/chat/chat.service.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/chat/chat.controller.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/chat/chat.gateway.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/social/social.controller.ts": {
+        "branches": 75,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
       }
     },
     "testEnvironment": "node"
