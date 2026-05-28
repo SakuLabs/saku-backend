@@ -9,17 +9,15 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor() {
-    // 1. Initialize the pg connection pool
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      // Optional: Set pool sizing depending on your Supabase limits
-      // max: 10,
     });
 
-    // 2. Pass the pool instance to the PrismaPg adapter
-    const adapter = new PrismaPg(pool);
+    // Avoid crashing the process when a backend (e.g. test container) terminates
+    // idle pg connections; surface real errors via the active query path.
+    pool.on('error', () => undefined);
 
-    // 3. Initialize Prisma Client with the adapter
+    const adapter = new PrismaPg(pool);
     super({ adapter });
   }
 
