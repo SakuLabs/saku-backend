@@ -40,7 +40,10 @@ export class CreateTaskDto {
   dueDate?: string;
 
   @IsOptional()
-  @Transform(({ obj }) => obj.deadline || obj.dueDate)
+  @Transform(
+    ({ obj }: { obj: { deadline?: string; dueDate?: string } }) =>
+      obj.deadline || obj.dueDate,
+  )
   deadlineOrDueDate?: string;
 
   @IsEnum(TaskPriority)

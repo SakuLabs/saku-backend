@@ -4,8 +4,23 @@ import {
   Schedule,
   ScheduleType,
   ScheduleColor,
+  ScheduleImportance,
 } from '../../domain/schedule.entity';
 import { PrismaService } from '../../../../prisma/prisma.service';
+
+interface ScheduleRow {
+  id: string;
+  title: string;
+  startTime: Date;
+  endTime: Date;
+  type: string;
+  color: string;
+  importance: string;
+  progress: number;
+  description: string | null;
+  userId: string | null;
+  groupId: string | null;
+}
 
 @Injectable()
 export class PrismaScheduleRepository implements IScheduleRepository {
@@ -45,12 +60,12 @@ export class PrismaScheduleRepository implements IScheduleRepository {
       },
     });
 
-    return this.toDomain(data);
+    return this.toDomain(data as ScheduleRow);
   }
 
   async findById(id: string): Promise<Schedule | null> {
     const data = await this.prisma.schedule.findUnique({ where: { id } });
-    return data ? this.toDomain(data) : null;
+    return data ? this.toDomain(data as ScheduleRow) : null;
   }
 
   async findByUserId(userId: string): Promise<Schedule[]> {
@@ -68,7 +83,7 @@ export class PrismaScheduleRepository implements IScheduleRepository {
       },
       orderBy: { startTime: 'asc' },
     });
-    return list.map((item) => this.toDomain(item));
+    return list.map((item) => this.toDomain(item as ScheduleRow));
   }
 
   async findInTimeRange(
@@ -76,13 +91,11 @@ export class PrismaScheduleRepository implements IScheduleRepository {
     end: Date,
     userId?: string,
   ): Promise<Schedule[]> {
-    const where: any = {
-      OR: [
-        {
-          startTime: { lte: end },
-          endTime: { gte: start },
-        },
-      ],
+    const where: {
+      OR: { startTime: { lte: Date }; endTime: { gte: Date } }[];
+      userId?: string;
+    } = {
+      OR: [{ startTime: { lte: end }, endTime: { gte: start } }],
     };
 
     if (userId) {
@@ -94,14 +107,14 @@ export class PrismaScheduleRepository implements IScheduleRepository {
       orderBy: { startTime: 'asc' },
     });
 
-    return list.map((item) => this.toDomain(item));
+    return list.map((item) => this.toDomain(item as ScheduleRow));
   }
 
   async delete(id: string): Promise<void> {
     await this.prisma.schedule.delete({ where: { id } });
   }
 
-  private toDomain(data: any): Schedule {
+  private toDomain(data: ScheduleRow): Schedule {
     return new Schedule(
       data.id,
       data.title,
@@ -109,11 +122,11 @@ export class PrismaScheduleRepository implements IScheduleRepository {
       data.endTime,
       data.type as ScheduleType,
       data.color as ScheduleColor,
-      data.importance,
+      data.importance as ScheduleImportance,
       data.progress,
-      data.description,
-      data.userId,
-      data.groupId,
+      data.description ?? undefined,
+      data.userId ?? undefined,
+      data.groupId ?? undefined,
     );
   }
 }

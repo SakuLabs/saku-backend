@@ -143,10 +143,10 @@ export class TaskController {
       }
 
       return await this.repo.save(task, user.sub);
-    } catch (error: any) {
-      throw new BadRequestException(
-        error.message || 'Gagal mengupdate status task',
-      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Gagal mengupdate status task';
+      throw new BadRequestException(message);
     }
   }
 
@@ -194,10 +194,10 @@ export class TaskController {
     try {
       task.updateProgress(progress);
       return await this.repo.save(task, user.sub);
-    } catch (error: any) {
-      throw new BadRequestException(
-        error.message || 'Gagal mengupdate progress',
-      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Gagal mengupdate progress';
+      throw new BadRequestException(message);
     }
   }
 

@@ -227,11 +227,11 @@ export class ScheduleController {
       (dto.type as ScheduleType) ?? schedule.type,
       (dto.color as ScheduleColor) ?? schedule.color,
       (dto.importance as ScheduleImportance) ??
-        (schedule as any).importance ??
+        schedule.importance ??
         ScheduleImportance.NORMAL,
       typeof dto.progress === 'number'
         ? dto.progress
-        : ((schedule as any).progress ?? 0),
+        : (schedule.progress ?? 0),
       dto.description ?? schedule.description,
       schedule.userId,
       dto.groupId ?? schedule.groupId,

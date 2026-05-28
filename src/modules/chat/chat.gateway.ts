@@ -9,8 +9,17 @@ import {
 } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import type { Server } from 'socket.io';
+import type { DefaultEventsMap } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
+import type { JwtPayload } from '../../common/types/jwt-payload';
+
+type AuthedSocket = Socket<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  { userId?: string }
+>;
 
 @WebSocketGateway({
   cors: {
@@ -27,58 +36,60 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly chatService: ChatService,
   ) {}
 
-  async handleConnection(client: Socket) {
-    const token =
-      client.handshake.auth?.token ||
-      (client.handshake.headers.authorization || '').replace('Bearer ', '');
+  handleConnection(client: AuthedSocket) {
+    const rawToken = client.handshake.auth?.token as string | undefined;
+    const headerToken = (client.handshake.headers.authorization || '').replace(
+      'Bearer ',
+      '',
+    );
+    const token = rawToken || headerToken;
     if (!token) {
       client.disconnect();
       return;
     }
     try {
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify<JwtPayload>(token);
       client.data.userId = payload.sub;
-      // Join user's personal room for receiving friend requests
-      client.join(`user:${payload.sub}`);
+      void client.join(`user:${payload.sub}`);
     } catch {
       client.disconnect();
     }
   }
 
-  handleDisconnect(_client: Socket) {
+  handleDisconnect(_client: AuthedSocket) {
     // no-op
   }
 
   @SubscribeMessage('joinGroup')
   async onJoinGroup(
     @MessageBody() body: { groupId: string },
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthedSocket,
   ) {
-    const userId = client.data.userId as string | undefined;
+    const userId = client.data.userId;
     if (!userId || !body?.groupId) return;
     const member = await this.chatService.isGroupMember(body.groupId, userId);
     if (!member) return;
-    client.join(this.groupRoom(body.groupId));
+    void client.join(this.groupRoom(body.groupId));
   }
 
   @SubscribeMessage('joinDM')
   async onJoinDM(
     @MessageBody() body: { userId: string },
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthedSocket,
   ) {
-    const currentUserId = client.data.userId as string | undefined;
+    const currentUserId = client.data.userId;
     if (!currentUserId || !body?.userId) return;
     const ok = await this.chatService.areFriends(currentUserId, body.userId);
     if (!ok) return;
-    client.join(this.dmRoom(currentUserId, body.userId));
+    void client.join(this.dmRoom(currentUserId, body.userId));
   }
 
   @SubscribeMessage('sendGroupMessage')
   async onSendGroupMessage(
     @MessageBody() body: { groupId: string; content: string },
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthedSocket,
   ) {
-    const userId = client.data.userId as string | undefined;
+    const userId = client.data.userId;
     if (!userId || !body?.groupId || !body?.content?.trim()) return;
     const member = await this.chatService.isGroupMember(body.groupId, userId);
     if (!member) return;
@@ -95,9 +106,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('sendDM')
   async onSendDM(
     @MessageBody() body: { recipientId: string; content: string },
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthedSocket,
   ) {
-    const userId = client.data.userId as string | undefined;
+    const userId = client.data.userId;
     if (!userId || !body?.recipientId || !body?.content?.trim()) return;
     const ok = await this.chatService.areFriends(userId, body.recipientId);
     if (!ok) return;
@@ -119,9 +130,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       groupId?: string;
       content: string;
     },
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthedSocket,
   ) {
-    const userId = client.data.userId as string | undefined;
+    const userId = client.data.userId;
     if (!userId || !body?.content?.trim()) return;
     if (body.type === 'group' && body.groupId) {
       const member = await this.chatService.isGroupMember(body.groupId, userId);
@@ -153,9 +164,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async onTyping(
     @MessageBody()
     body: { isTyping: boolean; groupId?: string; directMessageUserId?: string },
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthedSocket,
   ) {
-    const userId = client.data.userId as string | undefined;
+    const userId = client.data.userId;
     if (!userId) return;
 
     // Broadcast typing status to relevant room
@@ -186,9 +197,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async onFriendRequest(
     @MessageBody()
     body: { recipientId: string },
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthedSocket,
   ) {
-    const userId = client.data.userId as string | undefined;
+    const userId = client.data.userId;
     if (!userId || !body?.recipientId) return;
 
     // Find recipient's socket and send friend request notification

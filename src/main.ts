@@ -103,4 +103,4 @@ async function bootstrap() {
   console.log(`📚 API reference available at: http://localhost:${port}/docs`);
   console.log(`📄 OpenAPI JSON at: http://localhost:${port}/docs/json`);
 }
-bootstrap();
+void bootstrap();

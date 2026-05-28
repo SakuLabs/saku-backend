@@ -880,7 +880,7 @@ export class SocialController {
     else if (pendingSent) relationship = 'PENDING_SENT';
     else if (pendingReceived) relationship = 'PENDING_RECEIVED';
 
-    let groupInfo = null as any;
+    let groupInfo: { role: string; joinedAt: Date } | null = null;
     if (groupId) {
       const member = await this.prisma.groupMember.findFirst({
         where: { groupId, userId: targetId },

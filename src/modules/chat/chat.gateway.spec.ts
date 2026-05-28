@@ -54,7 +54,7 @@ describe('ChatGateway', () => {
   describe('handleConnection', () => {
     it('disconnects when no token', async () => {
       const client = makeSocket();
-      await gateway.handleConnection(client);
+      gateway.handleConnection(client);
       expect(client.disconnect).toHaveBeenCalled();
     });
 
@@ -63,7 +63,7 @@ describe('ChatGateway', () => {
         handshake: { auth: { token: 'abc' }, headers: {} } as any,
       });
       jwt.verify.mockReturnValue({ sub: 'u1' });
-      await gateway.handleConnection(client);
+      gateway.handleConnection(client);
       expect(jwt.verify).toHaveBeenCalledWith('abc');
       expect(client.data.userId).toBe('u1');
       expect(client.join).toHaveBeenCalledWith('user:u1');
@@ -77,7 +77,7 @@ describe('ChatGateway', () => {
         } as any,
       });
       jwt.verify.mockReturnValue({ sub: 'u2' });
-      await gateway.handleConnection(client);
+      gateway.handleConnection(client);
       expect(jwt.verify).toHaveBeenCalledWith('xyz');
       expect(client.join).toHaveBeenCalledWith('user:u2');
     });
@@ -89,7 +89,7 @@ describe('ChatGateway', () => {
       jwt.verify.mockImplementation(() => {
         throw new Error('invalid');
       });
-      await gateway.handleConnection(client);
+      gateway.handleConnection(client);
       expect(client.disconnect).toHaveBeenCalled();
     });
   });

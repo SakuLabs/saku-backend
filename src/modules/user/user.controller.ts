@@ -112,7 +112,7 @@ export class UserController {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
-    const data: any = {};
+    const data: { name?: string; bio?: string; avatarUrl?: string } = {};
     if (typeof name === 'string' && name.trim()) data.name = name.trim();
     if (typeof bio === 'string') data.bio = bio.trim();
     if (typeof avatarUrl === 'string') data.avatarUrl = avatarUrl.trim();

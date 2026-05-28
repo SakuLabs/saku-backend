@@ -6,17 +6,29 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { AuthService } from './auth.service';
 
 class RegisterDto {
-  email: string;
-  password: string;
-  name: string;
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(6)
+  password!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
 }
 
 class LoginDto {
-  email: string;
-  password: string;
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
 }
 
 @ApiTags('Authentication')
@@ -44,17 +56,17 @@ export class AuthController {
       },
     },
   })
-  async register(@Body() body: any) {
+  async register(@Body() body: RegisterDto) {
     if (!body.email || !body.password || !body.name) {
       throw new BadRequestException('Email, password, dan name harus diisi');
     }
     try {
       return await this.authService.register(body);
-    } catch (error: any) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new BadRequestException(error?.message || 'Registrasi gagal');
+    } catch (error: unknown) {
+      if (error instanceof HttpException) throw error;
+      const message =
+        error instanceof Error ? error.message : 'Registrasi gagal';
+      throw new BadRequestException(message);
     }
   }
 
@@ -77,17 +89,16 @@ export class AuthController {
       },
     },
   })
-  async login(@Body() body: any) {
+  async login(@Body() body: LoginDto) {
     if (!body.email || !body.password) {
       throw new BadRequestException('Email dan password harus diisi');
     }
     try {
       return await this.authService.login(body.email, body.password);
-    } catch (error: any) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new BadRequestException(error?.message || 'Login gagal');
+    } catch (error: unknown) {
+      if (error instanceof HttpException) throw error;
+      const message = error instanceof Error ? error.message : 'Login gagal';
+      throw new BadRequestException(message);
     }
   }
 }
