@@ -60,6 +60,7 @@
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
     "jest": "^30.0.0",
+    "jest-mock-extended": "^4.0.1",
     "prettier": "^3.4.2",
     "prisma": "^7.4.0",
     "source-map-support": "^0.5.21",
@@ -84,9 +85,42 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!**/*.spec.ts",
+      "!**/*.module.ts",
+      "!**/main.ts",
+      "!**/generated/**",
+      "!**/*.dto.ts",
+      "!**/*.entity.ts",
+      "!**/*.interface.ts"
     ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "src/modules/auth/auth.service.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/auth/auth.controller.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/common/guards/jwt-auth.guard.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/common/decorators/user.decorator.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      }
+    },
     "testEnvironment": "node"
   }
 }

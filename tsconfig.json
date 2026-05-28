@@ -23,7 +23,7 @@
     "paths": {
       "@/*": ["src/*"]
     },
-    "types": ["node"],
+    "types": ["node", "jest"],
     "lib": ["ES2023"]
   },
   "include": ["src/**/*"],
