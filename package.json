@@ -91,7 +91,6 @@
       "!**/main.ts",
       "!**/generated/**",
       "!**/*.dto.ts",
-      "!**/*.entity.ts",
       "!**/*.interface.ts"
     ],
     "coverageDirectory": "../coverage",
@@ -115,6 +114,66 @@
         "functions": 80
       },
       "src/common/decorators/user.decorator.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/user/user.controller.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/task/domain/task.entity.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/task/application/use-cases/create-task.use-case.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/task/presentation/task.controller.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/task/infrastructure/persistence/prisma-task.repository.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/task/infrastructure/scheduler/task-reminder.service.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/schedule/domain/schedule.entity.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/schedule/application/use-cases/create-schedule.use-case.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/schedule/presentation/schedule.controller.ts": {
+        "branches": 80,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80
+      },
+      "src/modules/schedule/infrastructure/persistence/prisma-schedule.repository.ts": {
         "branches": 80,
         "lines": 80,
         "statements": 80,
