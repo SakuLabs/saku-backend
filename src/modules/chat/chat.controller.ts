@@ -1,7 +1,23 @@
-import { Controller, Get, Post, Param, Body, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
+import type { JwtPayload } from '../../common/types/jwt-payload';
 import { ChatService } from './chat.service';
 
 interface SendMessageDto {
@@ -25,7 +41,7 @@ export class ChatController {
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   async getGroupMessages(
     @Param('groupId') groupId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -45,7 +61,7 @@ export class ChatController {
   @ApiParam({ name: 'userId', description: 'Other user ID' })
   async getDirectMessages(
     @Param('userId') otherUserId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -66,10 +82,14 @@ export class ChatController {
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiBody({ type: Object, description: 'Message payload with content, groupId, or directMessageUserId' })
+  @ApiBody({
+    type: Object,
+    description:
+      'Message payload with content, groupId, or directMessageUserId',
+  })
   async sendMessage(
     @Body() body: SendMessageDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -80,7 +100,10 @@ export class ChatController {
 
     // Send group message
     if (body.groupId) {
-      const member = await this.chatService.isGroupMember(body.groupId, user.sub);
+      const member = await this.chatService.isGroupMember(
+        body.groupId,
+        user.sub,
+      );
       if (!member) {
         throw new BadRequestException('Anda bukan anggota grup ini');
       }
@@ -93,7 +116,10 @@ export class ChatController {
 
     // Send direct message
     if (body.directMessageUserId) {
-      const ok = await this.chatService.areFriends(user.sub, body.directMessageUserId);
+      const ok = await this.chatService.areFriends(
+        user.sub,
+        body.directMessageUserId,
+      );
       if (!ok) {
         throw new BadRequestException('Hanya bisa DM teman');
       }
@@ -104,6 +130,8 @@ export class ChatController {
       );
     }
 
-    throw new BadRequestException('groupId atau directMessageUserId harus diisi');
+    throw new BadRequestException(
+      'groupId atau directMessageUserId harus diisi',
+    );
   }
 }

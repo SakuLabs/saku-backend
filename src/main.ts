@@ -20,23 +20,33 @@ function docsBasicAuth(req: Request, res: Response, next: NextFunction) {
   const [scheme, encoded] = header.split(' ');
 
   if (scheme !== 'Basic' || !encoded) {
-    res.set('WWW-Authenticate', 'Basic realm="docs"').status(401).send('Auth required');
+    res
+      .set('WWW-Authenticate', 'Basic realm="docs"')
+      .status(401)
+      .send('Auth required');
     return;
   }
 
-  const [user, pass] = Buffer.from(encoded, 'base64').toString('utf8').split(':');
+  const [user, pass] = Buffer.from(encoded, 'base64')
+    .toString('utf8')
+    .split(':');
   const userBuf = Buffer.from(user ?? '');
   const passBuf = Buffer.from(pass ?? '');
   const expUserBuf = Buffer.from(expectedUser);
   const expPassBuf = Buffer.from(expectedPass);
 
   const userOk =
-    userBuf.length === expUserBuf.length && timingSafeEqual(userBuf, expUserBuf);
+    userBuf.length === expUserBuf.length &&
+    timingSafeEqual(userBuf, expUserBuf);
   const passOk =
-    passBuf.length === expPassBuf.length && timingSafeEqual(passBuf, expPassBuf);
+    passBuf.length === expPassBuf.length &&
+    timingSafeEqual(passBuf, expPassBuf);
 
   if (!userOk || !passOk) {
-    res.set('WWW-Authenticate', 'Basic realm="docs"').status(401).send('Invalid credentials');
+    res
+      .set('WWW-Authenticate', 'Basic realm="docs"')
+      .status(401)
+      .send('Invalid credentials');
     return;
   }
 
@@ -45,7 +55,7 @@ function docsBasicAuth(req: Request, res: Response, next: NextFunction) {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Enable CORS for frontend
   app.enableCors({
     origin: ['http://localhost:3000', 'http://localhost:3001'], // Vite default port

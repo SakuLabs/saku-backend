@@ -11,10 +11,19 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
+import type { JwtPayload } from '../../common/types/jwt-payload';
 
 class SearchUsersByEmailDto {
   email: string;
@@ -65,13 +74,23 @@ export class SocialController {
   @ApiOperation({ summary: 'Get all friends' })
   @ApiResponse({ status: 200, description: 'Friends retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getFriends(@CurrentUser() user: any) {
+  async getFriends(@CurrentUser() user: JwtPayload | null) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
     const friends = await this.prisma.userFriend.findMany({
       where: { userId: user.sub },
-      include: { friend: { select: { id: true, name: true, userCode: true, bio: true, avatarUrl: true } } },
+      include: {
+        friend: {
+          select: {
+            id: true,
+            name: true,
+            userCode: true,
+            bio: true,
+            avatarUrl: true,
+          },
+        },
+      },
     });
     return friends.map((f) => f.friend);
   }
@@ -86,12 +105,15 @@ export class SocialController {
       example1: {
         summary: 'Search for users by email',
         value: {
-          email: 'john@example.com'
-        }
-      }
-    }
+          email: 'john@example.com',
+        },
+      },
+    },
   })
-  async searchUsers(@Body('email') email: string, @CurrentUser() user: any) {
+  async searchUsers(
+    @Body('email') email: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -108,7 +130,13 @@ export class SocialController {
         email: { contains: email, mode: 'insensitive' },
         id: { notIn: excludeIds },
       },
-      select: { id: true, name: true, userCode: true, bio: true, avatarUrl: true },
+      select: {
+        id: true,
+        name: true,
+        userCode: true,
+        bio: true,
+        avatarUrl: true,
+      },
       take: 50,
     });
     return users;
@@ -124,18 +152,21 @@ export class SocialController {
       example1: {
         summary: 'Search for users by name',
         value: {
-          name: 'John'
-        }
+          name: 'John',
+        },
       },
       example2: {
         summary: 'Search for users by user code',
         value: {
-          name: 'JD123'
-        }
-      }
-    }
+          name: 'JD123',
+        },
+      },
+    },
   })
-  async searchUsersByName(@Body('name') name: string, @CurrentUser() user: any) {
+  async searchUsersByName(
+    @Body('name') name: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -156,7 +187,13 @@ export class SocialController {
         ],
         id: { notIn: excludeIds },
       },
-      select: { id: true, name: true, userCode: true, bio: true, avatarUrl: true },
+      select: {
+        id: true,
+        name: true,
+        userCode: true,
+        bio: true,
+        avatarUrl: true,
+      },
       take: 50,
     });
     return users;
@@ -172,12 +209,15 @@ export class SocialController {
       example1: {
         summary: 'Search for user by ID',
         value: {
-          id: 'user-id-here'
-        }
-      }
-    }
+          id: 'user-id-here',
+        },
+      },
+    },
   })
-  async searchUsersById(@Body('id') id: string, @CurrentUser() user: any) {
+  async searchUsersById(
+    @Body('id') id: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -186,7 +226,13 @@ export class SocialController {
     }
     const userFound = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, name: true, userCode: true, bio: true, avatarUrl: true },
+      select: {
+        id: true,
+        name: true,
+        userCode: true,
+        bio: true,
+        avatarUrl: true,
+      },
     });
     if (!userFound || userFound.id === user.sub) {
       return [];
@@ -211,21 +257,21 @@ export class SocialController {
       example1: {
         summary: 'Send friend request by user code',
         value: {
-          userCode: 'JD123'
-        }
+          userCode: 'JD123',
+        },
       },
       example2: {
         summary: 'Send friend request by user ID',
         value: {
-          friendId: 'user-id-here'
-        }
-      }
-    }
+          friendId: 'user-id-here',
+        },
+      },
+    },
   })
   async requestFriend(
     @Body('userCode') userCode: string,
     @Body('friendId') friendId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -235,13 +281,17 @@ export class SocialController {
     }
     const code = userCode ? userCode.trim().toUpperCase() : '';
     const target = code
-      ? await this.prisma.user.findFirst({ where: { userCode: { equals: code, mode: 'insensitive' } } })
+      ? await this.prisma.user.findFirst({
+          where: { userCode: { equals: code, mode: 'insensitive' } },
+        })
       : await this.prisma.user.findUnique({ where: { id: friendId } });
     if (!target) {
       throw new BadRequestException('User tidak ditemukan');
     }
     if (user.sub === target.id) {
-      throw new BadRequestException('Tidak bisa menambah diri sendiri sebagai teman');
+      throw new BadRequestException(
+        'Tidak bisa menambah diri sendiri sebagai teman',
+      );
     }
 
     const alreadyFriend = await this.prisma.userFriend.findFirst({
@@ -290,7 +340,15 @@ export class SocialController {
     return await this.prisma.friendRequest.create({
       data: { senderId: user.sub, receiverId: target.id },
       include: {
-        receiver: { select: { id: true, name: true, userCode: true, bio: true, avatarUrl: true } },
+        receiver: {
+          select: {
+            id: true,
+            name: true,
+            userCode: true,
+            bio: true,
+            avatarUrl: true,
+          },
+        },
       },
     });
   }
@@ -299,13 +357,23 @@ export class SocialController {
   @ApiOperation({ summary: 'Get received friend requests' })
   @ApiResponse({ status: 200, description: 'Friend requests retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getFriendRequests(@CurrentUser() user: any) {
+  async getFriendRequests(@CurrentUser() user: JwtPayload | null) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
     return await this.prisma.friendRequest.findMany({
       where: { receiverId: user.sub, status: 'PENDING' },
-      include: { sender: { select: { id: true, name: true, userCode: true, bio: true, avatarUrl: true } } },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            userCode: true,
+            bio: true,
+            avatarUrl: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -314,13 +382,23 @@ export class SocialController {
   @ApiOperation({ summary: 'Get sent friend requests' })
   @ApiResponse({ status: 200, description: 'Sent requests retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getSentFriendRequests(@CurrentUser() user: any) {
+  async getSentFriendRequests(@CurrentUser() user: JwtPayload | null) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
     return await this.prisma.friendRequest.findMany({
       where: { senderId: user.sub, status: 'PENDING' },
-      include: { receiver: { select: { id: true, name: true, userCode: true, bio: true, avatarUrl: true } } },
+      include: {
+        receiver: {
+          select: {
+            id: true,
+            name: true,
+            userCode: true,
+            bio: true,
+            avatarUrl: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -331,11 +409,16 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Request not found' })
   @ApiParam({ name: 'id', description: 'Request ID' })
-  async acceptFriendRequest(@Param('id') id: string, @CurrentUser() user: any) {
+  async acceptFriendRequest(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
-    const request = await this.prisma.friendRequest.findUnique({ where: { id } });
+    const request = await this.prisma.friendRequest.findUnique({
+      where: { id },
+    });
     if (!request || request.receiverId !== user.sub) {
       throw new BadRequestException('Request tidak ditemukan');
     }
@@ -344,12 +427,22 @@ export class SocialController {
       data: { status: 'ACCEPTED' },
     });
     await this.prisma.userFriend.upsert({
-      where: { userId_friendId: { userId: request.senderId, friendId: request.receiverId } },
+      where: {
+        userId_friendId: {
+          userId: request.senderId,
+          friendId: request.receiverId,
+        },
+      },
       update: {},
       create: { userId: request.senderId, friendId: request.receiverId },
     });
     await this.prisma.userFriend.upsert({
-      where: { userId_friendId: { userId: request.receiverId, friendId: request.senderId } },
+      where: {
+        userId_friendId: {
+          userId: request.receiverId,
+          friendId: request.senderId,
+        },
+      },
       update: {},
       create: { userId: request.receiverId, friendId: request.senderId },
     });
@@ -362,11 +455,16 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Request not found' })
   @ApiParam({ name: 'id', description: 'Request ID' })
-  async rejectFriendRequest(@Param('id') id: string, @CurrentUser() user: any) {
+  async rejectFriendRequest(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
-    const request = await this.prisma.friendRequest.findUnique({ where: { id } });
+    const request = await this.prisma.friendRequest.findUnique({
+      where: { id },
+    });
     if (!request || request.receiverId !== user.sub) {
       throw new BadRequestException('Request tidak ditemukan');
     }
@@ -382,7 +480,10 @@ export class SocialController {
   @ApiResponse({ status: 200, description: 'Friend removed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiParam({ name: 'friendId', description: 'Friend ID' })
-  async removeFriend(@Param('friendId') friendId: string, @CurrentUser() user: any) {
+  async removeFriend(
+    @Param('friendId') friendId: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -399,7 +500,7 @@ export class SocialController {
   @ApiOperation({ summary: 'Get all groups' })
   @ApiResponse({ status: 200, description: 'Groups retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getGroups(@CurrentUser() user: any) {
+  async getGroups(@CurrentUser() user: JwtPayload | null) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -407,7 +508,17 @@ export class SocialController {
       where: { members: { some: { userId: user.sub } } },
       include: {
         members: {
-          include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, bio: true } } },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatarUrl: true,
+                bio: true,
+              },
+            },
+          },
         },
       },
     });
@@ -437,12 +548,15 @@ export class SocialController {
       example1: {
         summary: 'Create a new group',
         value: {
-          name: 'Study Group'
-        }
-      }
-    }
+          name: 'Study Group',
+        },
+      },
+    },
   })
-  async createGroup(@Body('name') name: string, @CurrentUser() user: any) {
+  async createGroup(
+    @Body('name') name: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -491,23 +605,23 @@ export class SocialController {
         summary: 'Add member with schedule permission',
         value: {
           userId: 'user-id-here',
-          canCreateSchedule: true
-        }
+          canCreateSchedule: true,
+        },
       },
       example2: {
         summary: 'Add member without schedule permission',
         value: {
           userId: 'user-id-here',
-          canCreateSchedule: false
-        }
-      }
-    }
+          canCreateSchedule: false,
+        },
+      },
+    },
   })
   async addMemberToGroup(
     @Param('groupId') groupId: string,
     @Body('userId') memberId: string,
     @Body('canCreateSchedule') canCreateSchedule: boolean,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -521,7 +635,10 @@ export class SocialController {
       where: { groupId, userId: user.sub },
     });
 
-    if (!adminMember || (adminMember.role !== 'ADMIN' && adminMember.role !== 'MODERATOR')) {
+    if (
+      !adminMember ||
+      (adminMember.role !== 'ADMIN' && adminMember.role !== 'MODERATOR')
+    ) {
       throw new ForbiddenException('Tidak memiliki akses menambah anggota');
     }
 
@@ -584,15 +701,15 @@ export class SocialController {
       example1: {
         summary: 'Invite a friend to group',
         value: {
-          userId: 'user-id-here'
-        }
-      }
-    }
+          userId: 'user-id-here',
+        },
+      },
+    },
   })
   async inviteToGroup(
     @Param('groupId') groupId: string,
     @Body('userId') inviteeId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -640,7 +757,7 @@ export class SocialController {
   @ApiOperation({ summary: 'Get group invites' })
   @ApiResponse({ status: 200, description: 'Invites retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getGroupInvites(@CurrentUser() user: any) {
+  async getGroupInvites(@CurrentUser() user: JwtPayload | null) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -660,7 +777,10 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Invite not found' })
   @ApiParam({ name: 'id', description: 'Invite ID' })
-  async acceptGroupInvite(@Param('id') id: string, @CurrentUser() user: any) {
+  async acceptGroupInvite(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -694,7 +814,10 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Invite not found' })
   @ApiParam({ name: 'id', description: 'Invite ID' })
-  async rejectGroupInvite(@Param('id') id: string, @CurrentUser() user: any) {
+  async rejectGroupInvite(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -715,10 +838,14 @@ export class SocialController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiParam({ name: 'id', description: 'User ID' })
-  @ApiQuery({ name: 'groupId', required: false, description: 'Group ID (optional)' })
+  @ApiQuery({
+    name: 'groupId',
+    required: false,
+    description: 'Group ID (optional)',
+  })
   async getUserProfile(
     @Param('id') targetId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
     @Query('groupId') groupId?: string,
   ) {
     if (!user?.sub) {
@@ -726,7 +853,13 @@ export class SocialController {
     }
     const target = await this.prisma.user.findUnique({
       where: { id: targetId },
-      select: { id: true, name: true, bio: true, avatarUrl: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        bio: true,
+        avatarUrl: true,
+        createdAt: true,
+      },
     });
     if (!target) {
       throw new BadRequestException('User tidak ditemukan');
@@ -780,15 +913,15 @@ export class SocialController {
       example1: {
         summary: 'Update group name',
         value: {
-          name: 'Updated Study Group'
-        }
-      }
-    }
+          name: 'Updated Study Group',
+        },
+      },
+    },
   })
   async updateGroupName(
     @Param('groupId') groupId: string,
     @Body('name') name: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -818,7 +951,7 @@ export class SocialController {
   async removeGroupMember(
     @Param('groupId') groupId: string,
     @Param('memberId') memberId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -845,7 +978,7 @@ export class SocialController {
   async promoteToModerator(
     @Param('groupId') groupId: string,
     @Param('memberId') memberId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -873,7 +1006,7 @@ export class SocialController {
   async demoteToMember(
     @Param('groupId') groupId: string,
     @Param('memberId') memberId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -903,15 +1036,15 @@ export class SocialController {
       example1: {
         summary: 'Transfer admin to another member',
         value: {
-          targetUserId: 'user-id-here'
-        }
-      }
-    }
+          targetUserId: 'user-id-here',
+        },
+      },
+    },
   })
   async transferAdmin(
     @Param('groupId') groupId: string,
     @Body('targetUserId') targetUserId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');

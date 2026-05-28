@@ -1,7 +1,10 @@
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { Task, TaskStatus } from '../../domain/task.entity';
 import type { ITaskRepository } from '../../domain/task.repository.interface';
-import { CreateTaskDto, TaskPriority } from '../../presentation/dto/create-task.dto';
+import {
+  CreateTaskDto,
+  TaskPriority,
+} from '../../presentation/dto/create-task.dto';
 
 @Injectable()
 export class CreateTaskUseCase {
@@ -28,15 +31,15 @@ export class CreateTaskUseCase {
     }
 
     const startDate = data.startDate ? new Date(data.startDate) : new Date();
-    
+
     // Use deadlineOrDueDate which handles both 'deadline' and 'dueDate' fields
     // If neither is provided, set it to 7 days from now
-    const deadline = data.deadlineOrDueDate 
+    const deadline = data.deadlineOrDueDate
       ? new Date(data.deadlineOrDueDate)
       : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     if (deadline < new Date()) {
-      throw new BadRequestException("Deadline tidak boleh di masa lalu!");
+      throw new BadRequestException('Deadline tidak boleh di masa lalu!');
     }
 
     const priorityNumber = this.convertPriorityToNumber(data.priority);
@@ -50,7 +53,7 @@ export class CreateTaskUseCase {
       priorityNumber,
       typeof data.progress === 'number' ? data.progress : 0,
       TaskStatus.TODO,
-      new Date()
+      new Date(),
     );
 
     await this.taskRepo.save(newTask, userId);

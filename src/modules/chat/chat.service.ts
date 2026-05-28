@@ -14,14 +14,27 @@ export class ChatService {
   async createGroupMessage(groupId: string, senderId: string, content: string) {
     return await this.prisma.message.create({
       data: { groupId, senderId, content },
-      include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
+      include: {
+        sender: { select: { id: true, name: true, avatarUrl: true } },
+      },
     });
   }
 
-  async createDirectMessage(senderId: string, recipientId: string, content: string) {
+  async createDirectMessage(
+    senderId: string,
+    recipientId: string,
+    content: string,
+  ) {
     return await this.prisma.message.create({
-      data: { senderId, recipientId, content, directMessageUserId: recipientId },
-      include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
+      data: {
+        senderId,
+        recipientId,
+        content,
+        directMessageUserId: recipientId,
+      },
+      include: {
+        sender: { select: { id: true, name: true, avatarUrl: true } },
+      },
     });
   }
 
@@ -30,7 +43,9 @@ export class ChatService {
       where: { groupId },
       orderBy: { createdAt: 'asc' },
       take,
-      include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
+      include: {
+        sender: { select: { id: true, name: true, avatarUrl: true } },
+      },
     });
   }
 
@@ -44,7 +59,9 @@ export class ChatService {
       },
       orderBy: { createdAt: 'asc' },
       take,
-      include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
+      include: {
+        sender: { select: { id: true, name: true, avatarUrl: true } },
+      },
     });
   }
 

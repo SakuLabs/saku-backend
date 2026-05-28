@@ -1,5 +1,15 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional, IsEnum } from 'class-validator';
-import { ScheduleType, ScheduleColor, ScheduleImportance } from '../../domain/schedule.entity';
+import {
+  IsString,
+  IsNotEmpty,
+  IsDateString,
+  IsOptional,
+  IsEnum,
+} from 'class-validator';
+import {
+  ScheduleType,
+  ScheduleColor,
+  ScheduleImportance,
+} from '../../domain/schedule.entity';
 
 export class CreateScheduleDto {
   @IsString()

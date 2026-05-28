@@ -1,4 +1,10 @@
-import { Controller, Post, Body, BadRequestException, HttpException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  BadRequestException,
+  HttpException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 
@@ -21,7 +27,10 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User successfully registered' })
-  @ApiResponse({ status: 400, description: 'Bad request - missing fields or user already exists' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - missing fields or user already exists',
+  })
   @ApiBody({
     type: RegisterDto,
     examples: {
@@ -30,10 +39,10 @@ export class AuthController {
         value: {
           email: 'user@example.com',
           password: 'SecurePassword123',
-          name: 'John Doe'
-        }
-      }
-    }
+          name: 'John Doe',
+        },
+      },
+    },
   })
   async register(@Body() body: any) {
     if (!body.email || !body.password || !body.name) {
@@ -52,7 +61,10 @@ export class AuthController {
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'User successfully logged in' })
-  @ApiResponse({ status: 401, description: 'Unauthorized - invalid credentials' })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - invalid credentials',
+  })
   @ApiBody({
     type: LoginDto,
     examples: {
@@ -60,10 +72,10 @@ export class AuthController {
         summary: 'Login with credentials',
         value: {
           email: 'user@example.com',
-          password: 'SecurePassword123'
-        }
-      }
-    }
+          password: 'SecurePassword123',
+        },
+      },
+    },
   })
   async login(@Body() body: any) {
     if (!body.email || !body.password) {

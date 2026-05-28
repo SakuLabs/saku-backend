@@ -1,12 +1,18 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { Schedule, ScheduleType, ScheduleColor, ScheduleImportance } from '../../domain/schedule.entity';
+import {
+  Schedule,
+  ScheduleType,
+  ScheduleColor,
+  ScheduleImportance,
+} from '../../domain/schedule.entity';
 import type { IScheduleRepository } from '../../domain/schedule.repository.interface';
 import { CreateScheduleDto } from '../../presentation/dto/create-schedule.dto';
 
 @Injectable()
 export class CreateScheduleUseCase {
   constructor(
-    @Inject('IScheduleRepository') private readonly scheduleRepo: IScheduleRepository,
+    @Inject('IScheduleRepository')
+    private readonly scheduleRepo: IScheduleRepository,
   ) {}
 
   async execute(data: CreateScheduleDto, userId: string): Promise<Schedule> {

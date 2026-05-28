@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { IScheduleRepository } from '../../domain/schedule.repository.interface';
-import { Schedule, ScheduleType, ScheduleColor } from '../../domain/schedule.entity';
+import {
+  Schedule,
+  ScheduleType,
+  ScheduleColor,
+} from '../../domain/schedule.entity';
 import { PrismaService } from '../../../../prisma/prisma.service';
 
 @Injectable()
@@ -11,7 +15,7 @@ export class PrismaScheduleRepository implements IScheduleRepository {
     if (!schedule.userId) {
       throw new Error('userId is required for schedule');
     }
-    
+
     const data = await this.prisma.schedule.upsert({
       where: { id: schedule.id },
       update: {
@@ -105,7 +109,7 @@ export class PrismaScheduleRepository implements IScheduleRepository {
       data.endTime,
       data.type as ScheduleType,
       data.color as ScheduleColor,
-      data.importance as any,
+      data.importance,
       data.progress,
       data.description,
       data.userId,

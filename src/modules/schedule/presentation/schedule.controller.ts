@@ -10,15 +10,28 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { CreateScheduleUseCase } from '../application/use-cases/create-schedule.use-case';
 import type { IScheduleRepository } from '../domain/schedule.repository.interface';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/user.decorator';
+import type { JwtPayload } from '../../../common/types/jwt-payload';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Schedule, ScheduleType, ScheduleColor, ScheduleImportance } from '../domain/schedule.entity';
+import {
+  Schedule,
+  ScheduleType,
+  ScheduleColor,
+  ScheduleImportance,
+} from '../domain/schedule.entity';
 
 class CheckConflictsDto {
   startTime: string;
@@ -41,7 +54,7 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Get all schedules for current user' })
   @ApiResponse({ status: 200, description: 'Schedules retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAll(@CurrentUser() user: any) {
+  async getAll(@CurrentUser() user: JwtPayload | null) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -59,15 +72,15 @@ export class ScheduleController {
         summary: 'Check conflicts for a 2-hour slot',
         value: {
           startTime: '2024-02-20T10:00:00Z',
-          endTime: '2024-02-20T12:00:00Z'
-        }
-      }
-    }
+          endTime: '2024-02-20T12:00:00Z',
+        },
+      },
+    },
   })
   async checkConflicts(
     @Body('startTime') startTime: string,
     @Body('endTime') endTime: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -101,8 +114,8 @@ export class ScheduleController {
           color: 'BLUE',
           importance: 'HIGH',
           description: 'Study for mathematics exam',
-          taskIds: []
-        }
+          taskIds: [],
+        },
       },
       example2: {
         summary: 'Create a group schedule',
@@ -115,12 +128,15 @@ export class ScheduleController {
           importance: 'NORMAL',
           description: 'Weekly project sync',
           groupId: 'group-id-here',
-          taskIds: []
-        }
-      }
-    }
+          taskIds: [],
+        },
+      },
+    },
   })
-  async create(@Body() dto: CreateScheduleDto, @CurrentUser() user: any) {
+  async create(
+    @Body() dto: CreateScheduleDto,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
@@ -132,7 +148,9 @@ export class ScheduleController {
         throw new BadRequestException('Anda bukan anggota grup ini');
       }
       if (member.role !== 'ADMIN' && !member.canCreateSchedule) {
-        throw new BadRequestException('Anda tidak memiliki akses membuat jadwal grup');
+        throw new BadRequestException(
+          'Anda tidak memiliki akses membuat jadwal grup',
+        );
       }
     }
     const created = await this.createSchedule.execute(dto, user.sub);
@@ -149,7 +167,10 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Update a schedule' })
   @ApiResponse({ status: 200, description: 'Schedule updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - no access to schedule' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - no access to schedule',
+  })
   @ApiResponse({ status: 404, description: 'Schedule not found' })
   @ApiParam({ name: 'id', description: 'Schedule ID' })
   @ApiBody({
@@ -160,21 +181,21 @@ export class ScheduleController {
         value: {
           title: 'Updated Study Session',
           startTime: '2024-02-20T11:00:00Z',
-          endTime: '2024-02-20T13:00:00Z'
-        }
+          endTime: '2024-02-20T13:00:00Z',
+        },
       },
       example2: {
         summary: 'Update schedule progress',
         value: {
-          progress: 75
-        }
-      }
-    }
+          progress: 75,
+        },
+      },
+    },
   })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateScheduleDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload | null,
   ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
@@ -205,8 +226,12 @@ export class ScheduleController {
       dto.endTime ? new Date(dto.endTime) : schedule.endTime,
       (dto.type as ScheduleType) ?? schedule.type,
       (dto.color as ScheduleColor) ?? schedule.color,
-      (dto.importance as ScheduleImportance) ?? (schedule as any).importance ?? ScheduleImportance.NORMAL,
-      typeof dto.progress === 'number' ? dto.progress : (schedule as any).progress ?? 0,
+      (dto.importance as ScheduleImportance) ??
+        (schedule as any).importance ??
+        ScheduleImportance.NORMAL,
+      typeof dto.progress === 'number'
+        ? dto.progress
+        : ((schedule as any).progress ?? 0),
       dto.description ?? schedule.description,
       schedule.userId,
       dto.groupId ?? schedule.groupId,
@@ -245,7 +270,10 @@ export class ScheduleController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Schedule not found' })
   @ApiParam({ name: 'id', description: 'Schedule ID' })
-  async delete(@Param('id') id: string, @CurrentUser() user: any) {
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }

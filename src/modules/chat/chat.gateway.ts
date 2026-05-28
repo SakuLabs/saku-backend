@@ -12,7 +12,12 @@ import type { Server } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 
-@WebSocketGateway({ cors: { origin: ['http://localhost:3000', 'http://localhost:3001'], credentials: true } })
+@WebSocketGateway({
+  cors: {
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    credentials: true,
+  },
+})
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   private server: Server;
@@ -40,7 +45,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  handleDisconnect(client: Socket) {
+  handleDisconnect(_client: Socket) {
     // no-op
   }
 
@@ -82,7 +87,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId,
       body.content.trim(),
     );
-    this.server.to(this.groupRoom(body.groupId)).emit('receive_message', message);
+    this.server
+      .to(this.groupRoom(body.groupId))
+      .emit('receive_message', message);
   }
 
   @SubscribeMessage('sendDM')
@@ -106,7 +113,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('send_message')
   async onSendMessage(
     @MessageBody()
-    body: { type: 'dm' | 'group'; recipientId?: string; groupId?: string; content: string },
+    body: {
+      type: 'dm' | 'group';
+      recipientId?: string;
+      groupId?: string;
+      content: string;
+    },
     @ConnectedSocket() client: Socket,
   ) {
     const userId = client.data.userId as string | undefined;
@@ -119,7 +131,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userId,
         body.content.trim(),
       );
-      this.server.to(this.groupRoom(body.groupId)).emit('receive_message', message);
+      this.server
+        .to(this.groupRoom(body.groupId))
+        .emit('receive_message', message);
     }
     if (body.type === 'dm' && body.recipientId) {
       const ok = await this.chatService.areFriends(userId, body.recipientId);
@@ -129,7 +143,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         body.recipientId,
         body.content.trim(),
       );
-      this.server.to(this.dmRoom(userId, body.recipientId)).emit('receive_message', message);
+      this.server
+        .to(this.dmRoom(userId, body.recipientId))
+        .emit('receive_message', message);
     }
   }
 
@@ -152,7 +168,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         groupId: body.groupId,
       });
     } else if (body.directMessageUserId) {
-      const ok = await this.chatService.areFriends(userId, body.directMessageUserId);
+      const ok = await this.chatService.areFriends(
+        userId,
+        body.directMessageUserId,
+      );
       if (!ok) return;
       const room = this.dmRoom(userId, body.directMessageUserId);
       this.server.to(room).emit('typing', {
@@ -173,8 +192,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!userId || !body?.recipientId) return;
 
     // Find recipient's socket and send friend request notification
-    const recipientSockets = await this.server.in(`user:${body.recipientId}`).fetchSockets();
-    recipientSockets.forEach(socket => {
+    const recipientSockets = await this.server
+      .in(`user:${body.recipientId}`)
+      .fetchSockets();
+    recipientSockets.forEach((socket) => {
       socket.emit('friendRequest', {
         senderId: userId,
         recipientId: body.recipientId,

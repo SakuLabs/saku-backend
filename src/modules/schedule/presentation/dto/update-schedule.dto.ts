@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsDateString, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsDateString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { ScheduleImportance } from '../../domain/schedule.entity';
 
 export class UpdateScheduleDto {

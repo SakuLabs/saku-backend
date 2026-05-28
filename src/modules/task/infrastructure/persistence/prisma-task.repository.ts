@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ITaskRepository } from '../../domain/task.repository.interface';
 import { Task, TaskStatus } from '../../domain/task.entity';
 // Asumsi Prisma sudah di-setup
-import { PrismaService } from '../../../../prisma/prisma.service'; 
+import { PrismaService } from '../../../../prisma/prisma.service';
 
 @Injectable()
 export class PrismaTaskRepository implements ITaskRepository {
@@ -11,8 +11,8 @@ export class PrismaTaskRepository implements ITaskRepository {
   async save(task: Task, userId?: string): Promise<Task> {
     await this.prisma.task.upsert({
       where: { id: task.id },
-      update: { 
-        title: task.title, 
+      update: {
+        title: task.title,
         status: task.status,
         startDate: task.startDate,
         deadline: task.deadline,

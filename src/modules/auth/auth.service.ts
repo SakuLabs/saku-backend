@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -49,14 +53,21 @@ export class AuthService {
     const payload = { sub: user.id, email: user.email };
     return {
       access_token: this.jwtService.sign(payload),
-      user: { id: user.id, name: user.name, email: user.email, userCode: user.userCode, bio: user.bio, avatarUrl: user.avatarUrl },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        userCode: user.userCode,
+        bio: user.bio,
+        avatarUrl: user.avatarUrl,
+      },
     };
   }
 
   async login(email: string, pass: string) {
     // 1. Cari user di PostgreSQL berdasarkan email
     const user = await this.prisma.user.findUnique({ where: { email } });
-    
+
     // 2. Cek apakah user ada dan password (hash) cocok
     if (!user || !(await bcrypt.compare(pass, user.password))) {
       throw new UnauthorizedException('Email atau password salah');
@@ -66,7 +77,14 @@ export class AuthService {
     const payload = { sub: user.id, email: user.email };
     return {
       access_token: this.jwtService.sign(payload),
-      user: { id: user.id, name: user.name, email: user.email, userCode: user.userCode, bio: user.bio, avatarUrl: user.avatarUrl },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        userCode: user.userCode,
+        bio: user.bio,
+        avatarUrl: user.avatarUrl,
+      },
     };
   }
 }
