@@ -157,7 +157,16 @@ jobs:
         env:
           DOKPLOY_DEPLOY_WEBHOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
         run: |
-          curl -fSs --retry 3 --retry-delay 5 "$DOKPLOY_DEPLOY_WEBHOOK"
+          if [ -z "$DOKPLOY_DEPLOY_WEBHOOK" ]; then
+            echo "❌ DOKPLOY_DEPLOY_WEBHOOK is empty (check the PROD environment secret)"; exit 1
+          fi
+          code=$(curl -sS -o /tmp/dokploy.out -w '%{http_code}' --retry 3 --retry-delay 5 "$DOKPLOY_DEPLOY_WEBHOOK")
+          echo "Dokploy responded HTTP $code"
+          echo "--- response body ---"; cat /tmp/dokploy.out; echo
+          if [ "$code" -ge 400 ]; then
+            echo "❌ deploy webhook rejected the request"; exit 1
+          fi
+          echo "✅ deploy triggered"
 
       # Verify the new release is live + DB reachable.
       # Skips automatically until PROD_HEALTH_URL is set.
