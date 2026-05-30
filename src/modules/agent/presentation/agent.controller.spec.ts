@@ -30,7 +30,11 @@ describe('AgentController', () => {
   });
 
   it('forwards chat to the service with the user id', async () => {
-    service.chat.mockResolvedValue({ conversationId: 'c1', reply: 'ok', actions: [] });
+    service.chat.mockResolvedValue({
+      conversationId: 'c1',
+      reply: 'ok',
+      actions: [],
+    });
     const result = await controller.chat(
       { content: 'hi', conversationId: 'c1' },
       { sub: 'user-1' } as never,

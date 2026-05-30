@@ -36,10 +36,7 @@ export class AgentController {
   @ApiResponse({ status: 201, description: 'Assistant replied' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 502, description: 'AI assistant unavailable' })
-  async chat(
-    @Body() body: ChatDto,
-    @CurrentUser() user: JwtPayload | null,
-  ) {
+  async chat(@Body() body: ChatDto, @CurrentUser() user: JwtPayload | null) {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }

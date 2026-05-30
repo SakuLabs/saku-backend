@@ -10,13 +10,23 @@ describe('ToolRegistry', () => {
   beforeEach(() => {
     scheduleTools = {
       definitions: jest.fn().mockReturnValue([
-        { type: 'function', function: { name: 'create_schedule', description: '', parameters: {} } },
+        {
+          type: 'function',
+          function: {
+            name: 'create_schedule',
+            description: '',
+            parameters: {},
+          },
+        },
       ]),
       createSchedule: jest.fn().mockResolvedValue({ ok: 'sched' }),
     };
     taskTools = {
       definitions: jest.fn().mockReturnValue([
-        { type: 'function', function: { name: 'list_tasks', description: '', parameters: {} } },
+        {
+          type: 'function',
+          function: { name: 'list_tasks', description: '', parameters: {} },
+        },
       ]),
       listTasks: jest.fn().mockResolvedValue([]),
     };
@@ -32,11 +42,9 @@ describe('ToolRegistry', () => {
   });
 
   it('dispatches by name, parsing JSON arguments, with the user context', async () => {
-    const result = await registry.dispatch(
-      'create_schedule',
-      '{"title":"x"}',
-      { userId: 'user-1' },
-    );
+    const result = await registry.dispatch('create_schedule', '{"title":"x"}', {
+      userId: 'user-1',
+    });
     expect(scheduleTools.createSchedule).toHaveBeenCalledWith(
       { title: 'x' },
       { userId: 'user-1' },

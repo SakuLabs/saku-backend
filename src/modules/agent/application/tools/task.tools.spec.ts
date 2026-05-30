@@ -35,7 +35,9 @@ describe('TaskTools', () => {
 
   it('exposes definitions for create_task and list_tasks', () => {
     const names = tools.definitions().map((d) => d.function.name);
-    expect(names).toEqual(expect.arrayContaining(['create_task', 'list_tasks']));
+    expect(names).toEqual(
+      expect.arrayContaining(['create_task', 'list_tasks']),
+    );
   });
 
   it('create_task defaults priority to MEDIUM and forwards deadline', async () => {

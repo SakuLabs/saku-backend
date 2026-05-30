@@ -55,7 +55,11 @@ describe('PrismaConversationRepository', () => {
         role: 'assistant',
         content: null,
         toolCalls: [
-          { id: 'call_1', type: 'function', function: { name: 'list_tasks', arguments: '{}' } },
+          {
+            id: 'call_1',
+            type: 'function',
+            function: { name: 'list_tasks', arguments: '{}' },
+          },
         ],
         toolCallId: null,
         createdAt: new Date(),
@@ -64,7 +68,12 @@ describe('PrismaConversationRepository', () => {
 
     const msgs = await repo.getMessages('c1');
     expect(msgs).toHaveLength(2);
-    expect(msgs[0]).toEqual({ role: 'user', content: 'hi', toolCalls: undefined, toolCallId: undefined });
+    expect(msgs[0]).toEqual({
+      role: 'user',
+      content: 'hi',
+      toolCalls: undefined,
+      toolCallId: undefined,
+    });
     expect(msgs[1].toolCalls?.[0].function.name).toBe('list_tasks');
   });
 
@@ -76,8 +85,20 @@ describe('PrismaConversationRepository', () => {
 
     expect(prisma.agentMessage.createMany).toHaveBeenCalledWith({
       data: [
-        { conversationId: 'c1', role: 'user', content: 'hi', toolCalls: undefined, toolCallId: undefined },
-        { conversationId: 'c1', role: 'tool', content: '{}', toolCalls: undefined, toolCallId: 'call_1' },
+        {
+          conversationId: 'c1',
+          role: 'user',
+          content: 'hi',
+          toolCalls: undefined,
+          toolCallId: undefined,
+        },
+        {
+          conversationId: 'c1',
+          role: 'tool',
+          content: '{}',
+          toolCalls: undefined,
+          toolCallId: 'call_1',
+        },
       ],
     });
     expect(prisma.agentConversation.update).toHaveBeenCalledWith({

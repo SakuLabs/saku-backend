@@ -59,7 +59,11 @@ describe('ScheduleTools', () => {
   it('create_schedule delegates to the use-case with userId', async () => {
     createUseCase.execute.mockResolvedValue(makeSchedule());
     const result = await tools.createSchedule(
-      { title: 'Math class', startTime: '2026-01-01T10:00:00Z', endTime: '2026-01-01T11:00:00Z' },
+      {
+        title: 'Math class',
+        startTime: '2026-01-01T10:00:00Z',
+        endTime: '2026-01-01T11:00:00Z',
+      },
       { userId: 'user-1' },
     );
     expect(createUseCase.execute).toHaveBeenCalledWith(
@@ -100,7 +104,10 @@ describe('ScheduleTools', () => {
   it('update_schedule rejects when the schedule belongs to another user', async () => {
     repo.findById.mockResolvedValue(makeSchedule('other-user'));
     await expect(
-      tools.updateSchedule({ id: 'sch-1', title: 'New title' }, { userId: 'user-1' }),
+      tools.updateSchedule(
+        { id: 'sch-1', title: 'New title' },
+        { userId: 'user-1' },
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(repo.save).not.toHaveBeenCalled();
   });
