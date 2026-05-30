@@ -8,7 +8,6 @@ import {
   IsOptional,
   IsEnum,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 
 export enum TaskPriority {
   LOW = 'LOW',
@@ -38,13 +37,6 @@ export class CreateTaskDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string;
-
-  @IsOptional()
-  @Transform(
-    ({ obj }: { obj: { deadline?: string; dueDate?: string } }) =>
-      obj.deadline || obj.dueDate,
-  )
-  deadlineOrDueDate?: string;
 
   @IsEnum(TaskPriority)
   priority!: TaskPriority;

@@ -25,6 +25,7 @@
 - **Chat** — Socket.IO gateway: group rooms, DM rooms (friends-only), typing, friend-request push
 - **Social** — Friends, friend requests (with auto-accept on reverse), groups, group invites, admin/moderator roles
 - **API Docs** — Scalar UI at `/docs` (basic-auth gated, available in all envs)
+- **AI agent (`/agent/chat`)** — natural-language schedule & task management via an OpenAI-compatible LLM. Configure `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (see `.env.example`).
 
 ## Tech Stack
 
@@ -54,6 +55,11 @@ Copy `.env.example` to `.env`.
 | `CLOUDINARY_CLOUD_NAME` | for avatars | Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | for avatars | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | for avatars | Cloudinary API secret |
+| `LLM_BASE_URL` | for AI agent | OpenAI-compatible base URL (e.g. MiMo) |
+| `LLM_API_KEY` | for AI agent | API key for the LLM provider |
+| `LLM_MODEL` | for AI agent | Model name/ID to use |
+| `LLM_TIMEOUT_MS` | no | Request timeout in ms (default 30000) |
+| `AGENT_PROMPT_FILE` | no | Path to the agent system-prompt template (default `prompts/agent-system.md`) |
 
 `/docs` returns 503 if `DOCS_USER`/`DOCS_PASS` unset (fail-closed).
 
@@ -197,6 +203,15 @@ test/
 - `POST /social/groups/invites/:id/{accept,reject}`
 - `POST /social/groups/:groupId/transfer-admin`
 - `GET /social/users/:id/profile?groupId=...`
+
+### Agent (`/agent`) — bearer required
+- `POST /agent/chat` — body `{ content, conversationId? }` → `{ conversationId, reply }` — natural-language schedule & task management. Pass the returned `conversationId` back to continue the same thread.
+- `GET  /agent/conversations` — list the user's conversations
+- `GET  /agent/conversations/:id/messages` — full message history of one conversation (owner-only)
+
+The agent runs its own loop over an OpenAI-compatible LLM (MiMo): it sends the conversation + tool definitions, executes any tool calls (create/list/update/delete schedule, check_conflicts, create/list task) scoped to the authenticated user, feeds results back, and repeats up to 5 iterations before replying. Tool names are never exposed in the response.
+
+The agent's system prompt is a template at `prompts/agent-system.md` (override the path with `AGENT_PROMPT_FILE`). It controls reply language, tone, and Markdown formatting. Edit the file to retune behaviour, then restart — it loads once at startup. `{{now}}` is substituted with the current ISO datetime per request; if the file is missing/empty a built-in default is used.
 
 ### Chat (`/chat`) — bearer required
 - `GET  /chat/group/:groupId` — group history (member-only)

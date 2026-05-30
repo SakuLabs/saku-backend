@@ -128,12 +128,25 @@ POST /agent/chat { conversationId?, content }
 The loop, the tool registry, and the system prompt together *are* the agent.
 Self-contained in NestJS; MiMo only answers "what to say / which tool to call".
 
-### System prompt (intent)
+### System prompt (template file)
 
 Short instruction: assistant manages the user's schedules and tasks; current
 date/time is injected; always operate on the authenticated user's data; prefer
 `check_conflicts` before creating overlapping schedules; confirm back in natural
-language what was done. (Exact wording finalized in implementation.)
+language what was done.
+
+The prompt is not hard-coded. `SystemPromptService`
+(`infrastructure/prompt/system-prompt.service.ts`) loads a template file at
+startup and renders it per request:
+
+- Path from `AGENT_PROMPT_FILE` (relative to cwd), default `prompts/agent-system.md`.
+- `{{key}}` tokens are substituted at request time via `render(vars)`; v1 supplies
+  `{{now}}` (current ISO datetime). Unknown tokens are left untouched.
+- If the file is missing or empty, a built-in default template is used so the
+  agent still works.
+
+This lets the prompt be retuned by editing the file (restart to reload), with no
+code change.
 
 ## Tools (v1)
 

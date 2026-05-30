@@ -32,10 +32,11 @@ export class CreateTaskUseCase {
 
     const startDate = data.startDate ? new Date(data.startDate) : new Date();
 
-    // Use deadlineOrDueDate which handles both 'deadline' and 'dueDate' fields
-    // If neither is provided, set it to 7 days from now
-    const deadline = data.deadlineOrDueDate
-      ? new Date(data.deadlineOrDueDate)
+    // Accept either 'deadline' or its 'dueDate' alias from the client.
+    // If neither is provided, default to 7 days from now.
+    const deadlineInput = data.deadline ?? data.dueDate;
+    const deadline = deadlineInput
+      ? new Date(deadlineInput)
       : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     if (deadline < new Date()) {

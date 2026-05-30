@@ -14,6 +14,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
       useClass: PrismaScheduleRepository,
     },
   ],
-  exports: ['IScheduleRepository'],
+  exports: ['IScheduleRepository', CreateScheduleUseCase],
 })
 export class ScheduleModule {}
