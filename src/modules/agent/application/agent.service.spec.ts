@@ -1,5 +1,8 @@
 import { AgentService } from './agent.service';
-import { LlmClient, LlmResponseMessage } from '../infrastructure/llm/llm.client';
+import {
+  LlmClient,
+  LlmResponseMessage,
+} from '../infrastructure/llm/llm.client';
 import { ToolRegistry } from './tools/tool-registry';
 import {
   ConversationMessage,
@@ -22,7 +25,10 @@ describe('AgentService', () => {
 
   beforeEach(() => {
     llm = { chat: jest.fn() };
-    registry = { definitions: jest.fn().mockReturnValue([]), dispatch: jest.fn() };
+    registry = {
+      definitions: jest.fn().mockReturnValue([]),
+      dispatch: jest.fn(),
+    };
     convRepo = {
       create: jest.fn(),
       findById: jest.fn(),
@@ -63,16 +69,25 @@ describe('AgentService', () => {
       role: 'assistant',
       content: null,
       tool_calls: [
-        { id: 'call_1', type: 'function', function: { name: 'list_tasks', arguments: '{}' } },
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'list_tasks', arguments: '{}' },
+        },
       ],
     };
-    const textTurn: LlmResponseMessage = { role: 'assistant', content: 'You have 2 tasks.' };
+    const textTurn: LlmResponseMessage = {
+      role: 'assistant',
+      content: 'You have 2 tasks.',
+    };
     llm.chat.mockResolvedValueOnce(toolTurn).mockResolvedValueOnce(textTurn);
     registry.dispatch.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
 
     const result = await service.chat('user-1', 'how many tasks?');
 
-    expect(registry.dispatch).toHaveBeenCalledWith('list_tasks', '{}', { userId: 'user-1' });
+    expect(registry.dispatch).toHaveBeenCalledWith('list_tasks', '{}', {
+      userId: 'user-1',
+    });
     expect(result.reply).toBe('You have 2 tasks.');
     expect(result.actions).toEqual([{ tool: 'list_tasks', ok: true }]);
   });
@@ -83,12 +98,21 @@ describe('AgentService', () => {
       role: 'assistant',
       content: null,
       tool_calls: [
-        { id: 'call_1', type: 'function', function: { name: 'delete_schedule', arguments: '{"id":"x"}' } },
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'delete_schedule', arguments: '{"id":"x"}' },
+        },
       ],
     };
-    const textTurn: LlmResponseMessage = { role: 'assistant', content: 'That schedule is not yours.' };
+    const textTurn: LlmResponseMessage = {
+      role: 'assistant',
+      content: 'That schedule is not yours.',
+    };
     llm.chat.mockResolvedValueOnce(toolTurn).mockResolvedValueOnce(textTurn);
-    registry.dispatch.mockRejectedValue(new Error('Tidak memiliki akses ke schedule ini'));
+    registry.dispatch.mockRejectedValue(
+      new Error('Tidak memiliki akses ke schedule ini'),
+    );
 
     const result = await service.chat('user-1', 'delete it');
 
@@ -102,7 +126,11 @@ describe('AgentService', () => {
       role: 'assistant',
       content: null,
       tool_calls: [
-        { id: 'call_x', type: 'function', function: { name: 'list_tasks', arguments: '{}' } },
+        {
+          id: 'call_x',
+          type: 'function',
+          function: { name: 'list_tasks', arguments: '{}' },
+        },
       ],
     };
     llm.chat.mockResolvedValue(toolTurn); // always asks for a tool -> never settles
@@ -112,5 +140,32 @@ describe('AgentService', () => {
 
     expect(llm.chat).toHaveBeenCalledTimes(5);
     expect(result.reply).toMatch(/tidak dapat menyelesaikan/i);
+  });
+
+  it('persists the buffered turn even if the LLM throws mid-loop', async () => {
+    convRepo.create.mockResolvedValue(summary('c1', 'user-1'));
+    const toolTurn = {
+      role: 'assistant',
+      content: null,
+      tool_calls: [
+        { id: 'call_1', type: 'function', function: { name: 'list_tasks', arguments: '{}' } },
+      ],
+    };
+    // 1st call returns a tool turn; 2nd call (after the tool ran) throws.
+    llm.chat
+      .mockResolvedValueOnce(toolTurn)
+      .mockRejectedValueOnce(new Error('LLM down'));
+    registry.dispatch.mockResolvedValue([{ id: 't1' }]);
+
+    await expect(service.chat('user-1', 'do it')).rejects.toThrow('LLM down');
+
+    // The user message + assistant tool_call + tool result must still be saved.
+    expect(convRepo.appendMessages).toHaveBeenCalledTimes(1);
+    const persisted = convRepo.appendMessages.mock.calls[0][1];
+    expect(persisted.map((m: { role: string }) => m.role)).toEqual([
+      'user',
+      'assistant',
+      'tool',
+    ]);
   });
 });

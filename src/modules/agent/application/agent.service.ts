@@ -1,13 +1,5 @@
-import {
-  ForbiddenException,
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
-import {
-  LlmClient,
-  LlmMessage,
-} from '../infrastructure/llm/llm.client';
+import { ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common';
+import { LlmClient, LlmMessage } from '../infrastructure/llm/llm.client';
 import {
   ConversationMessage,
   IConversationRepository,
@@ -54,64 +46,79 @@ export class AgentService {
     const toPersist: ConversationMessage[] = [{ role: 'user', content }];
     const actions: { tool: string; ok: boolean }[] = [];
 
-    for (let i = 0; i < MAX_ITERATIONS; i++) {
-      const response = await this.llm.chat(
-        llmMessages,
-        this.toolRegistry.definitions(),
-      );
+    try {
+      for (let i = 0; i < MAX_ITERATIONS; i++) {
+        const response = await this.llm.chat(
+          llmMessages,
+          this.toolRegistry.definitions(),
+        );
 
-      const assistantMsg: ConversationMessage = {
-        role: 'assistant',
-        content: response.content,
-        toolCalls: response.tool_calls,
-      };
-      llmMessages.push(this.toLlmMessage(assistantMsg));
-      toPersist.push(assistantMsg);
-
-      if (!response.tool_calls || response.tool_calls.length === 0) {
-        await this.conversationRepo.appendMessages(conversation.id, toPersist);
-        return {
-          conversationId: conversation.id,
-          reply: response.content ?? '',
-          actions,
+        const assistantMsg: ConversationMessage = {
+          role: 'assistant',
+          content: response.content,
+          toolCalls: response.tool_calls,
         };
-      }
+        llmMessages.push(this.toLlmMessage(assistantMsg));
+        toPersist.push(assistantMsg);
 
-      for (const call of response.tool_calls) {
-        let resultContent: string;
-        let ok = true;
-        try {
-          const result = await this.toolRegistry.dispatch(
-            call.function.name,
-            call.function.arguments,
-            { userId },
-          );
-          resultContent = JSON.stringify(result);
-        } catch (err) {
-          ok = false;
-          resultContent = JSON.stringify({
-            error: err instanceof Error ? err.message : 'Tool gagal dijalankan',
-          });
-          this.logger.warn(`Tool ${call.function.name} failed: ${resultContent}`);
+        if (!response.tool_calls || response.tool_calls.length === 0) {
+          await this.conversationRepo.appendMessages(conversation.id, toPersist);
+          return {
+            conversationId: conversation.id,
+            reply: response.content ?? '',
+            actions,
+          };
         }
-        actions.push({ tool: call.function.name, ok });
 
-        const toolMsg: ConversationMessage = {
-          role: 'tool',
-          content: resultContent,
-          toolCallId: call.id,
-        };
-        llmMessages.push(this.toLlmMessage(toolMsg));
-        toPersist.push(toolMsg);
+        for (const call of response.tool_calls) {
+          let resultContent: string;
+          let ok = true;
+          try {
+            const result = await this.toolRegistry.dispatch(
+              call.function.name,
+              call.function.arguments,
+              { userId },
+            );
+            resultContent = JSON.stringify(result);
+          } catch (err) {
+            ok = false;
+            resultContent = JSON.stringify({
+              error:
+                err instanceof Error ? err.message : 'Tool gagal dijalankan',
+            });
+            this.logger.warn(
+              `Tool ${call.function.name} failed: ${resultContent}`,
+            );
+          }
+          actions.push({ tool: call.function.name, ok });
+
+          const toolMsg: ConversationMessage = {
+            role: 'tool',
+            content: resultContent,
+            toolCallId: call.id,
+          };
+          llmMessages.push(this.toLlmMessage(toolMsg));
+          toPersist.push(toolMsg);
+        }
       }
-    }
 
-    // Iteration cap reached without a settled text reply.
-    const fallback =
-      'Maaf, saya tidak dapat menyelesaikan permintaan itu sekarang.';
-    toPersist.push({ role: 'assistant', content: fallback });
-    await this.conversationRepo.appendMessages(conversation.id, toPersist);
-    return { conversationId: conversation.id, reply: fallback, actions };
+      // Iteration cap reached without a settled text reply.
+      const fallback =
+        'Maaf, saya tidak dapat menyelesaikan permintaan itu sekarang.';
+      toPersist.push({ role: 'assistant', content: fallback });
+      await this.conversationRepo.appendMessages(conversation.id, toPersist);
+      return { conversationId: conversation.id, reply: fallback, actions };
+    } catch (err) {
+      // Persist the partial turn so executed side-effects keep a conversation trail.
+      try {
+        await this.conversationRepo.appendMessages(conversation.id, toPersist);
+      } catch (persistErr) {
+        this.logger.error(
+          `Failed to persist partial turn for ${conversation.id}: ${String(persistErr)}`,
+        );
+      }
+      throw err;
+    }
   }
 
   private async requireOwnedConversation(id: string, userId: string) {
