@@ -205,10 +205,13 @@ test/
 - `GET /social/users/:id/profile?groupId=...`
 
 ### Agent (`/agent`) — bearer required
-- `POST /agent/chat` — `{ content, conversationId? }` — natural-language schedule & task management
-- `GET  /agent/conversations` — list conversation history
+- `POST /agent/chat` — body `{ content, conversationId? }` → `{ conversationId, reply }` — natural-language schedule & task management. Pass the returned `conversationId` back to continue the same thread.
+- `GET  /agent/conversations` — list the user's conversations
+- `GET  /agent/conversations/:id/messages` — full message history of one conversation (owner-only)
 
-The agent's system prompt is a template at `prompts/agent-system.md` (override the path with `AGENT_PROMPT_FILE`). Edit the file to retune behaviour; `{{now}}` is substituted with the current ISO datetime per request. If the file is missing/empty, a built-in default is used.
+The agent runs its own loop over an OpenAI-compatible LLM (MiMo): it sends the conversation + tool definitions, executes any tool calls (create/list/update/delete schedule, check_conflicts, create/list task) scoped to the authenticated user, feeds results back, and repeats up to 5 iterations before replying. Tool names are never exposed in the response.
+
+The agent's system prompt is a template at `prompts/agent-system.md` (override the path with `AGENT_PROMPT_FILE`). It controls reply language, tone, and Markdown formatting. Edit the file to retune behaviour, then restart — it loads once at startup. `{{now}}` is substituted with the current ISO datetime per request; if the file is missing/empty a built-in default is used.
 
 ### Chat (`/chat`) — bearer required
 - `GET  /chat/group/:groupId` — group history (member-only)
