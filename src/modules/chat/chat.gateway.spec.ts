@@ -36,6 +36,8 @@ describe('ChatGateway', () => {
       areFriends: jest.fn(),
       createGroupMessage: jest.fn(),
       createDirectMessage: jest.fn(),
+      getGroupMemberIds: jest.fn().mockResolvedValue([]),
+      getFriendIds: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<ChatService>;
 
     const module: TestingModule = await Test.createTestingModule({
