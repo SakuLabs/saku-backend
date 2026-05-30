@@ -4,6 +4,7 @@ import { SocialController } from './social.controller';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { createPrismaMock, MockPrisma } from '../../../test/utils/prisma-mock';
+import { ChatGateway } from '../chat/chat.gateway';
 import type { JwtPayload } from '../../common/types/jwt-payload';
 
 const me: JwtPayload = { sub: 'u1', email: 'a@b.com' };
@@ -14,9 +15,13 @@ describe('SocialController', () => {
 
   beforeEach(async () => {
     prisma = createPrismaMock();
+    const chatGateway = { emitToUser: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SocialController],
-      providers: [{ provide: PrismaService, useValue: prisma }],
+      providers: [
+        { provide: PrismaService, useValue: prisma },
+        { provide: ChatGateway, useValue: chatGateway },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })

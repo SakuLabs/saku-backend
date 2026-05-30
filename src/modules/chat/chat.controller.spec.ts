@@ -19,6 +19,8 @@ describe('ChatController', () => {
       areFriends: jest.fn(),
       createGroupMessage: jest.fn(),
       createDirectMessage: jest.fn(),
+      getUnreadCounts: jest.fn(),
+      markConversationRead: jest.fn(),
     } as unknown as jest.Mocked<ChatService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -147,6 +149,49 @@ describe('ChatController', () => {
         );
         expect(chat.createDirectMessage).toHaveBeenCalledWith('u1', 'u2', 'yo');
       });
+    });
+  });
+
+  describe('getUnread', () => {
+    it('throws when no user', async () => {
+      await expect(controller.getUnread(null)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('returns unread counts for the user', async () => {
+      chat.getUnreadCounts.mockResolvedValueOnce([
+        { conversationKey: 'dm:u2', count: 4 },
+      ] as any);
+      const result = await controller.getUnread(me);
+      expect(chat.getUnreadCounts).toHaveBeenCalledWith('u1');
+      expect(result).toEqual([{ conversationKey: 'dm:u2', count: 4 }]);
+    });
+  });
+
+  describe('markRead', () => {
+    it('throws when no user', async () => {
+      await expect(
+        controller.markRead({ type: 'group', id: 'g1' }, null),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws when type or id missing', async () => {
+      await expect(
+        controller.markRead({ type: 'group' } as any, me),
+      ).rejects.toThrow(/harus diisi/);
+    });
+
+    it('marks a group conversation read', async () => {
+      const res = await controller.markRead({ type: 'group', id: 'g1' }, me);
+      expect(chat.markConversationRead).toHaveBeenCalledWith('u1', 'group:g1');
+      expect(res).toEqual({ ok: true, conversationKey: 'group:g1' });
+    });
+
+    it('marks a direct conversation read', async () => {
+      const res = await controller.markRead({ type: 'direct', id: 'u2' }, me);
+      expect(chat.markConversationRead).toHaveBeenCalledWith('u1', 'dm:u2');
+      expect(res).toEqual({ ok: true, conversationKey: 'dm:u2' });
     });
   });
 });

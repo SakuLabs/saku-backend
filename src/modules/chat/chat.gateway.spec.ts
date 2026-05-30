@@ -36,6 +36,8 @@ describe('ChatGateway', () => {
       areFriends: jest.fn(),
       createGroupMessage: jest.fn(),
       createDirectMessage: jest.fn(),
+      getGroupMemberIds: jest.fn().mockResolvedValue([]),
+      getFriendIds: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<ChatService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -302,9 +304,112 @@ describe('ChatGateway', () => {
     });
   });
 
-  describe('handleDisconnect', () => {
-    it('is a no-op', () => {
-      expect(() => gateway.handleDisconnect(makeSocket())).not.toThrow();
+  describe('presence', () => {
+    const connect = async (sub: string, id: string) => {
+      const client = makeSocket({
+        id,
+        handshake: { auth: { token: 't' }, headers: {} } as any,
+      });
+      jwt.verify.mockReturnValueOnce({ sub } as any);
+      await gateway.handleConnection(client);
+      return client;
+    };
+
+    it('broadcasts online to friends on first connect', async () => {
+      chat.getFriendIds.mockResolvedValueOnce(['f1', 'f2']);
+      await connect('u1', 's1');
+      expect(server.to).toHaveBeenCalledWith('user:f1');
+      expect(server.to).toHaveBeenCalledWith('user:f2');
+      expect(server.emit).toHaveBeenCalledWith('presence:update', {
+        userId: 'u1',
+        online: true,
+      });
+    });
+
+    it('does not re-broadcast for a second socket of same user', async () => {
+      chat.getFriendIds.mockResolvedValue([]);
+      await connect('u1', 's1');
+      const lookups = chat.getFriendIds.mock.calls.length;
+      await connect('u1', 's2');
+      // second socket: trackPresence returns before broadcasting → no extra lookup
+      expect(chat.getFriendIds.mock.calls.length).toBe(lookups);
+    });
+
+    it('broadcasts offline when last socket disconnects', async () => {
+      chat.getFriendIds.mockResolvedValue(['f1']);
+      const client = await connect('u1', 's1');
+      server.to.mockClear();
+      server.emit.mockClear();
+      await gateway.handleDisconnect(client);
+      expect(server.to).toHaveBeenCalledWith('user:f1');
+      expect(server.emit).toHaveBeenCalledWith('presence:update', {
+        userId: 'u1',
+        online: false,
+      });
+    });
+
+    it('does not broadcast offline while another socket remains', async () => {
+      chat.getFriendIds.mockResolvedValue(['f1']);
+      const c1 = await connect('u1', 's1');
+      await connect('u1', 's2');
+      server.emit.mockClear();
+      await gateway.handleDisconnect(c1);
+      expect(server.emit).not.toHaveBeenCalledWith(
+        'presence:update',
+        expect.objectContaining({ online: false }),
+      );
+    });
+
+    it('handleDisconnect is a no-op without userId', async () => {
+      await expect(
+        gateway.handleDisconnect(makeSocket()),
+      ).resolves.toBeUndefined();
+    });
+
+    it('presence:sync returns only online friends', async () => {
+      chat.getFriendIds.mockResolvedValue([]);
+      await connect('u1', 's1');
+      const caller = makeSocket();
+      caller.data.userId = 'u2';
+      chat.getFriendIds.mockResolvedValueOnce(['u1', 'u3']);
+      const res = await gateway.onPresenceSync(caller);
+      expect(res).toEqual({ online: ['u1'] });
+    });
+
+    it('presence:sync returns empty without userId', async () => {
+      const res = await gateway.onPresenceSync(makeSocket());
+      expect(res).toEqual({ online: [] });
+    });
+  });
+
+  describe('message_notification', () => {
+    it('notifies other group members (not sender) on group message', async () => {
+      const client = makeSocket();
+      client.data.userId = 'u1';
+      chat.isGroupMember.mockResolvedValueOnce({ id: 'm' } as any);
+      chat.createGroupMessage.mockResolvedValueOnce({ id: 'msg' } as any);
+      chat.getGroupMemberIds.mockResolvedValueOnce(['u1', 'u2', 'u3']);
+      await gateway.onSendGroupMessage({ groupId: 'g1', content: 'hi' }, client);
+      expect(server.to).toHaveBeenCalledWith('user:u2');
+      expect(server.to).toHaveBeenCalledWith('user:u3');
+      expect(server.to).not.toHaveBeenCalledWith('user:u1');
+      expect(server.emit).toHaveBeenCalledWith('message_notification', {
+        conversationKey: 'group:g1',
+        message: { id: 'msg' },
+      });
+    });
+
+    it('notifies recipient on DM', async () => {
+      const client = makeSocket();
+      client.data.userId = 'u1';
+      chat.areFriends.mockResolvedValueOnce(true);
+      chat.createDirectMessage.mockResolvedValueOnce({ id: 'dm' } as any);
+      await gateway.onSendDM({ recipientId: 'u2', content: 'yo' }, client);
+      expect(server.to).toHaveBeenCalledWith('user:u2');
+      expect(server.emit).toHaveBeenCalledWith('message_notification', {
+        conversationKey: 'dm:u1',
+        message: { id: 'dm' },
+      });
     });
   });
 });

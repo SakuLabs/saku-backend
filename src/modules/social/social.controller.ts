@@ -24,6 +24,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import type { JwtPayload } from '../../common/types/jwt-payload';
+import { ChatGateway } from '../chat/chat.gateway';
 
 class SearchUsersByEmailDto {
   email: string;
@@ -68,7 +69,10 @@ class TransferAdminDto {
 @Controller('social')
 @UseGuards(JwtAuthGuard)
 export class SocialController {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Get('friends')
   @ApiOperation({ summary: 'Get all friends' })
@@ -323,6 +327,20 @@ export class SocialController {
         update: {},
         create: { userId: user.sub, friendId: target.id },
       });
+      // The original requester (target) instantly gains a new friend (user.sub).
+      const me = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: {
+          id: true,
+          name: true,
+          userCode: true,
+          bio: true,
+          avatarUrl: true,
+        },
+      });
+      this.chatGateway.emitToUser(target.id, 'friendRequestAccepted', {
+        friend: me,
+      });
       return { ok: true, autoAccepted: true };
     }
 
@@ -337,9 +355,18 @@ export class SocialController {
       throw new BadRequestException('Permintaan sudah dikirim');
     }
 
-    return await this.prisma.friendRequest.create({
+    const created = await this.prisma.friendRequest.create({
       data: { senderId: user.sub, receiverId: target.id },
       include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            userCode: true,
+            bio: true,
+            avatarUrl: true,
+          },
+        },
         receiver: {
           select: {
             id: true,
@@ -351,6 +378,14 @@ export class SocialController {
         },
       },
     });
+
+    // Push the incoming request to the recipient in realtime.
+    this.chatGateway.emitToUser(target.id, 'friendRequest', {
+      request: created,
+      senderName: created.sender?.name,
+    });
+
+    return created;
   }
 
   @Get('friends/requests')
@@ -446,6 +481,23 @@ export class SocialController {
       update: {},
       create: { userId: request.receiverId, friendId: request.senderId },
     });
+
+    // Notify the original sender that their request was accepted so their
+    // friend list updates live without a refresh.
+    const accepter = await this.prisma.user.findUnique({
+      where: { id: request.receiverId },
+      select: {
+        id: true,
+        name: true,
+        userCode: true,
+        bio: true,
+        avatarUrl: true,
+      },
+    });
+    this.chatGateway.emitToUser(request.senderId, 'friendRequestAccepted', {
+      friend: accepter,
+    });
+
     return { ok: true };
   }
 
@@ -472,6 +524,12 @@ export class SocialController {
       where: { id },
       data: { status: 'REJECTED' },
     });
+
+    // Let the sender's UI drop the pending sent-request.
+    this.chatGateway.emitToUser(request.senderId, 'friendRequestRejected', {
+      requestId: id,
+    });
+
     return { ok: true };
   }
 

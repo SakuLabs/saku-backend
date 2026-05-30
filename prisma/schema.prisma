@@ -44,6 +44,8 @@ model User {
 
   groupInvitesSent     GroupInvite[] @relation("GroupInviteSender")
   groupInvitesReceived GroupInvite[] @relation("GroupInviteReceiver")
+
+  conversationReads ConversationRead[]
 }
 
 model Group {
@@ -221,6 +223,18 @@ model Message {
   @@index([recipientId])
   @@index([directMessageUserId])
   @@index([readAt])
+}
+
+model ConversationRead {
+  id              String   @id @default(uuid())
+  userId          String
+  conversationKey String // "group:{groupId}" or "dm:{otherUserId}"
+  lastReadAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationKey])
+  @@index([userId])
 }
 
 model AgentConversation {
