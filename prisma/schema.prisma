@@ -25,6 +25,9 @@ model User {
   // Relasi Jadwal
   schedules Schedule[]
 
+  // AI agent
+  agentConversations AgentConversation[]
+
   // Fitur Pertemanan (Self-relation Many-to-Many)
   friends   UserFriend[] @relation("UserFriends")
   friendOf  UserFriend[] @relation("FriendOf")
@@ -210,8 +213,39 @@ model Message {
   // For easier frontend filtering
   directMessageUserId String?
 
+  // Read receipt
+  readAt DateTime?
+
   @@index([senderId])
   @@index([groupId])
   @@index([recipientId])
   @@index([directMessageUserId])
+  @@index([readAt])
+}
+
+model AgentConversation {
+  id        String         @id @default(uuid())
+  userId    String
+  title     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AgentMessage[]
+
+  @@index([userId])
+}
+
+model AgentMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String   // "user" | "assistant" | "tool"
+  content        String?
+  toolCalls      Json?
+  toolCallId     String?
+  createdAt      DateTime @default(now())
+
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
 }
