@@ -52,19 +52,28 @@ describe('CreateTaskUseCase', () => {
     expect(repo.save).toHaveBeenCalledWith(result, 'user-1');
   });
 
-  it('uses deadlineOrDueDate when provided', async () => {
+  it('uses deadline when provided', async () => {
     const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const result = await useCase.execute(
-      baseDto({ deadlineOrDueDate: deadline.toISOString() }),
+      baseDto({ deadline: deadline.toISOString() }),
       'user-1',
     );
     expect(result.deadline.getTime()).toBe(deadline.getTime());
   });
 
+  it('falls back to dueDate alias when deadline absent', async () => {
+    const dueDate = new Date(Date.now() + 36 * 60 * 60 * 1000);
+    const result = await useCase.execute(
+      baseDto({ dueDate: dueDate.toISOString() }),
+      'user-1',
+    );
+    expect(result.deadline.getTime()).toBe(dueDate.getTime());
+  });
+
   it('rejects deadline in the past', async () => {
     const past = new Date(Date.now() - 1000).toISOString();
     await expect(
-      useCase.execute(baseDto({ deadlineOrDueDate: past }), 'user-1'),
+      useCase.execute(baseDto({ deadline: past }), 'user-1'),
     ).rejects.toThrow(/Deadline/);
     expect(repo.save).not.toHaveBeenCalled();
   });
@@ -107,7 +116,7 @@ describe('CreateTaskUseCase', () => {
     const result = await useCase.execute(
       baseDto({
         startDate: start.toISOString(),
-        deadlineOrDueDate: deadline.toISOString(),
+        deadline: deadline.toISOString(),
       }),
       'user-1',
     );
