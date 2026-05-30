@@ -38,6 +38,12 @@ export class CreateTaskDto {
   @IsDateString()
   dueDate?: string;
 
+  /** Resolved deadline alias — populated by @Transform in the pipe, or set
+   *  explicitly when calling the use-case directly (e.g. from tool handlers). */
+  @IsOptional()
+  @IsDateString()
+  deadlineOrDueDate?: string;
+
   @IsEnum(TaskPriority)
   priority!: TaskPriority;
 
