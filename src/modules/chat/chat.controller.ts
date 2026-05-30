@@ -26,6 +26,11 @@ interface SendMessageDto {
   directMessageUserId?: string;
 }
 
+interface MarkReadDto {
+  type: 'group' | 'direct';
+  id: string;
+}
+
 @ApiTags('Chat')
 @ApiBearerAuth()
 @Controller('chat')
@@ -133,5 +138,40 @@ export class ChatController {
     throw new BadRequestException(
       'groupId atau directMessageUserId harus diisi',
     );
+  }
+
+  @Get('unread')
+  @ApiOperation({ summary: 'Get unread message counts per conversation' })
+  @ApiResponse({ status: 200, description: 'Unread counts retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getUnread(@CurrentUser() user: JwtPayload | null) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+    return await this.chatService.getUnreadCounts(user.sub);
+  }
+
+  @Post('conversations/read')
+  @ApiOperation({ summary: 'Mark a conversation as read' })
+  @ApiResponse({ status: 201, description: 'Conversation marked as read' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({
+    type: Object,
+    description: 'Payload: { type: "group" | "direct", id }',
+  })
+  async markRead(
+    @Body() body: MarkReadDto,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+    if (!body?.type || !body?.id) {
+      throw new BadRequestException('type dan id harus diisi');
+    }
+    const conversationKey =
+      body.type === 'group' ? `group:${body.id}` : `dm:${body.id}`;
+    await this.chatService.markConversationRead(user.sub, conversationKey);
+    return { ok: true, conversationKey };
   }
 }

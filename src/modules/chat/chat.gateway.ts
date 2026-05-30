@@ -32,12 +32,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   private server: Server;
 
+  // In-memory presence: userId -> set of connected socket ids.
+  // Single-server only (default in-memory adapter); resets on restart.
+  private readonly onlineUsers = new Map<string, Set<string>>();
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly chatService: ChatService,
   ) {}
 
-  handleConnection(client: AuthedSocket) {
+  /** Emit an event to a user's personal room (all their connected sockets). */
+  emitToUser(userId: string, event: string, payload: unknown) {
+    this.server.to(`user:${userId}`).emit(event, payload);
+  }
+
+  async handleConnection(client: AuthedSocket) {
     const rawToken = client.handshake.auth?.token as string | undefined;
     const headerToken = (client.handshake.headers.authorization || '').replace(
       'Bearer ',
@@ -50,15 +59,52 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     try {
       const payload = this.jwtService.verify<JwtPayload>(token);
-      client.data.userId = payload.sub;
-      void client.join(`user:${payload.sub}`);
+      const userId = payload.sub;
+      client.data.userId = userId;
+      void client.join(`user:${userId}`);
+      await this.trackPresence(userId, client.id);
     } catch {
       client.disconnect();
     }
   }
 
-  handleDisconnect(_client: AuthedSocket) {
-    // no-op
+  async handleDisconnect(client: AuthedSocket) {
+    const userId = client.data.userId;
+    if (!userId) return;
+    const sockets = this.onlineUsers.get(userId);
+    if (!sockets) return;
+    sockets.delete(client.id);
+    if (sockets.size === 0) {
+      this.onlineUsers.delete(userId);
+      await this.broadcastPresence(userId, false);
+    }
+  }
+
+  private async trackPresence(userId: string, socketId: string) {
+    const existing = this.onlineUsers.get(userId);
+    if (existing) {
+      existing.add(socketId);
+      return; // already online, no broadcast needed
+    }
+    this.onlineUsers.set(userId, new Set([socketId]));
+    await this.broadcastPresence(userId, true);
+  }
+
+  /** Tell a user's friends that they came online / went offline. */
+  private async broadcastPresence(userId: string, online: boolean) {
+    const friendIds = await this.chatService.getFriendIds(userId);
+    for (const friendId of friendIds) {
+      this.emitToUser(friendId, 'presence:update', { userId, online });
+    }
+  }
+
+  @SubscribeMessage('presence:sync')
+  async onPresenceSync(@ConnectedSocket() client: AuthedSocket) {
+    const userId = client.data.userId;
+    if (!userId) return { online: [] };
+    const friendIds = await this.chatService.getFriendIds(userId);
+    const online = friendIds.filter((id) => this.onlineUsers.has(id));
+    return { online };
   }
 
   @SubscribeMessage('joinGroup')
@@ -102,6 +148,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server
       .to(this.groupRoom(body.groupId))
       .emit('receive_message', message);
+    await this.notifyGroupParticipants(body.groupId, userId, message);
   }
 
   @SubscribeMessage('sendDM')
@@ -120,6 +167,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
     const room = this.dmRoom(userId, body.recipientId);
     this.server.to(room).emit('receive_message', message);
+    // Notify recipient on their personal room so badges/toasts update app-wide,
+    // even when they don't have this DM open. Key = the OTHER party (sender).
+    this.emitToUser(body.recipientId, 'message_notification', {
+      conversationKey: `dm:${userId}`,
+      message,
+    });
   }
 
   @SubscribeMessage('send_message')
@@ -146,6 +199,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server
         .to(this.groupRoom(body.groupId))
         .emit('receive_message', message);
+      await this.notifyGroupParticipants(body.groupId, userId, message);
     }
     if (body.type === 'dm' && body.recipientId) {
       const ok = await this.chatService.areFriends(userId, body.recipientId);
@@ -158,6 +212,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server
         .to(this.dmRoom(userId, body.recipientId))
         .emit('receive_message', message);
+      this.emitToUser(body.recipientId, 'message_notification', {
+        conversationKey: `dm:${userId}`,
+        message,
+      });
+    }
+  }
+
+  /** Notify every group member except the sender on their personal room. */
+  private async notifyGroupParticipants(
+    groupId: string,
+    senderId: string,
+    message: unknown,
+  ) {
+    const memberIds = await this.chatService.getGroupMemberIds(groupId);
+    for (const memberId of memberIds) {
+      if (memberId === senderId) continue;
+      this.emitToUser(memberId, 'message_notification', {
+        conversationKey: `group:${groupId}`,
+        message,
+      });
     }
   }
 

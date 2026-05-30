@@ -76,4 +76,84 @@ export class ChatService {
     });
     return !!friendship;
   }
+
+  async getFriendIds(userId: string): Promise<string[]> {
+    const rows = await this.prisma.userFriend.findMany({
+      where: { userId },
+      select: { friendId: true },
+    });
+    return rows.map((r) => r.friendId);
+  }
+
+  async getGroupMemberIds(groupId: string): Promise<string[]> {
+    const rows = await this.prisma.groupMember.findMany({
+      where: { groupId },
+      select: { userId: true },
+    });
+    return rows.map((r) => r.userId);
+  }
+
+  // ---- Unread tracking (persisted via ConversationRead) ----
+
+  async markConversationRead(userId: string, conversationKey: string) {
+    return await this.prisma.conversationRead.upsert({
+      where: { userId_conversationKey: { userId, conversationKey } },
+      update: { lastReadAt: new Date() },
+      create: { userId, conversationKey, lastReadAt: new Date() },
+    });
+  }
+
+  /**
+   * Returns unread counts per conversation for a user.
+   * conversationKey: "group:{groupId}" or "dm:{otherUserId}".
+   * Only counts messages from other users created after lastReadAt.
+   */
+  async getUnreadCounts(
+    userId: string,
+  ): Promise<{ conversationKey: string; count: number }[]> {
+    const reads = await this.prisma.conversationRead.findMany({
+      where: { userId },
+    });
+    const readMap = new Map(reads.map((r) => [r.conversationKey, r.lastReadAt]));
+
+    const result: { conversationKey: string; count: number }[] = [];
+
+    // Group conversations the user belongs to
+    const memberships = await this.prisma.groupMember.findMany({
+      where: { userId },
+      select: { groupId: true },
+    });
+    for (const { groupId } of memberships) {
+      const key = `group:${groupId}`;
+      const lastRead = readMap.get(key);
+      const count = await this.prisma.message.count({
+        where: {
+          groupId,
+          senderId: { not: userId },
+          ...(lastRead ? { createdAt: { gt: lastRead } } : {}),
+        },
+      });
+      if (count > 0) result.push({ conversationKey: key, count });
+    }
+
+    // Direct conversations: group incoming DMs by sender
+    const dmSenders = await this.prisma.message.groupBy({
+      by: ['senderId'],
+      where: { recipientId: userId },
+    });
+    for (const { senderId } of dmSenders) {
+      const key = `dm:${senderId}`;
+      const lastRead = readMap.get(key);
+      const count = await this.prisma.message.count({
+        where: {
+          senderId,
+          recipientId: userId,
+          ...(lastRead ? { createdAt: { gt: lastRead } } : {}),
+        },
+      });
+      if (count > 0) result.push({ conversationKey: key, count });
+    }
+
+    return result;
+  }
 }
