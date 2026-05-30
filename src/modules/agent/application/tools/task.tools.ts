@@ -58,9 +58,6 @@ export class TaskTools {
       description: args.description as string | undefined,
       startDate: args.startDate as string | undefined,
       deadline,
-      // The DTO's @Transform only runs through the validation pipe; set it
-      // explicitly here because we call the use-case directly.
-      deadlineOrDueDate: deadline,
       priority,
       progress: typeof args.progress === 'number' ? args.progress : undefined,
     };

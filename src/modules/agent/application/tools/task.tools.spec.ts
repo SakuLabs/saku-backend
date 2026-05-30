@@ -49,7 +49,6 @@ describe('TaskTools', () => {
         title: 'Write report',
         priority: TaskPriority.MEDIUM,
         deadline: '2026-12-01T00:00:00Z',
-        deadlineOrDueDate: '2026-12-01T00:00:00Z',
       }),
       'user-1',
     );
