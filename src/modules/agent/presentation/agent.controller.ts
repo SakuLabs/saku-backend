@@ -41,7 +41,14 @@ export class AgentController {
     if (!user?.sub) {
       throw new BadRequestException('User tidak terautentikasi');
     }
-    return this.agentService.chat(user.sub, body.content, body.conversationId);
+    // `actions` is computed internally (logging/debug) but intentionally not
+    // exposed in the response so tool names never surface in the UI.
+    const { conversationId, reply } = await this.agentService.chat(
+      user.sub,
+      body.content,
+      body.conversationId,
+    );
+    return { conversationId, reply };
   }
 
   @Get('conversations')
