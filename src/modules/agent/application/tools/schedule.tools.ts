@@ -44,8 +44,14 @@ export class ScheduleTools {
               startTime: { type: 'string', description: 'ISO 8601 datetime' },
               endTime: { type: 'string', description: 'ISO 8601 datetime' },
               description: { type: 'string' },
-              type: { type: 'string', enum: ['EVENT', 'MEETING', 'TASK_REMINDER'] },
-              color: { type: 'string', enum: ['purple', 'blue', 'green', 'orange', 'red'] },
+              type: {
+                type: 'string',
+                enum: ['EVENT', 'MEETING', 'TASK_REMINDER'],
+              },
+              color: {
+                type: 'string',
+                enum: ['purple', 'blue', 'green', 'orange', 'red'],
+              },
               importance: { type: 'string', enum: ['LOW', 'NORMAL', 'HIGH'] },
             },
             required: ['title', 'startTime', 'endTime'],
@@ -97,8 +103,14 @@ export class ScheduleTools {
               startTime: { type: 'string', description: 'ISO 8601 datetime' },
               endTime: { type: 'string', description: 'ISO 8601 datetime' },
               description: { type: 'string' },
-              type: { type: 'string', enum: ['EVENT', 'MEETING', 'TASK_REMINDER'] },
-              color: { type: 'string', enum: ['purple', 'blue', 'green', 'orange', 'red'] },
+              type: {
+                type: 'string',
+                enum: ['EVENT', 'MEETING', 'TASK_REMINDER'],
+              },
+              color: {
+                type: 'string',
+                enum: ['purple', 'blue', 'green', 'orange', 'red'],
+              },
               importance: { type: 'string', enum: ['LOW', 'NORMAL', 'HIGH'] },
               progress: { type: 'number' },
             },
@@ -137,8 +149,8 @@ export class ScheduleTools {
   async listSchedules(args: Args, ctx: ToolContext): Promise<unknown> {
     if (args.start && args.end) {
       return this.scheduleRepo.findInTimeRange(
-        new Date(String(args.start)),
-        new Date(String(args.end)),
+        new Date(args.start as string),
+        new Date(args.end as string),
         ctx.userId,
       );
     }
@@ -147,8 +159,8 @@ export class ScheduleTools {
 
   async checkConflicts(args: Args, ctx: ToolContext): Promise<unknown> {
     const conflicts = await this.scheduleRepo.findInTimeRange(
-      new Date(String(args.startTime)),
-      new Date(String(args.endTime)),
+      new Date(args.startTime as string),
+      new Date(args.endTime as string),
       ctx.userId,
     );
     return { hasConflict: conflicts.length > 0, conflicts };
@@ -159,8 +171,8 @@ export class ScheduleTools {
     const updated = new Schedule(
       existing.id,
       (args.title as string) ?? existing.title,
-      args.startTime ? new Date(String(args.startTime)) : existing.startTime,
-      args.endTime ? new Date(String(args.endTime)) : existing.endTime,
+      args.startTime ? new Date(args.startTime as string) : existing.startTime,
+      args.endTime ? new Date(args.endTime as string) : existing.endTime,
       (args.type as ScheduleType) ?? existing.type,
       (args.color as ScheduleColor) ?? existing.color,
       (args.importance as ScheduleImportance) ?? existing.importance,

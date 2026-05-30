@@ -25,6 +25,7 @@
 - **Chat** — Socket.IO gateway: group rooms, DM rooms (friends-only), typing, friend-request push
 - **Social** — Friends, friend requests (with auto-accept on reverse), groups, group invites, admin/moderator roles
 - **API Docs** — Scalar UI at `/docs` (basic-auth gated, available in all envs)
+- **AI agent (`/agent/chat`)** — natural-language schedule & task management via an OpenAI-compatible LLM. Configure `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (see `.env.example`).
 
 ## Tech Stack
 
@@ -54,6 +55,10 @@ Copy `.env.example` to `.env`.
 | `CLOUDINARY_CLOUD_NAME` | for avatars | Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | for avatars | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | for avatars | Cloudinary API secret |
+| `LLM_BASE_URL` | for AI agent | OpenAI-compatible base URL (e.g. MiMo) |
+| `LLM_API_KEY` | for AI agent | API key for the LLM provider |
+| `LLM_MODEL` | for AI agent | Model name/ID to use |
+| `LLM_TIMEOUT_MS` | no | Request timeout in ms (default 30000) |
 
 `/docs` returns 503 if `DOCS_USER`/`DOCS_PASS` unset (fail-closed).
 
@@ -197,6 +202,10 @@ test/
 - `POST /social/groups/invites/:id/{accept,reject}`
 - `POST /social/groups/:groupId/transfer-admin`
 - `GET /social/users/:id/profile?groupId=...`
+
+### Agent (`/agent`) — bearer required
+- `POST /agent/chat` — `{ message, conversationId? }` — natural-language schedule & task management
+- `GET  /agent/conversations` — list conversation history
 
 ### Chat (`/chat`) — bearer required
 - `GET  /chat/group/:groupId` — group history (member-only)
