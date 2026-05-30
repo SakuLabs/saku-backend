@@ -8,6 +8,7 @@ import { ToolRegistry } from './application/tools/tool-registry';
 import { ScheduleTools } from './application/tools/schedule.tools';
 import { TaskTools } from './application/tools/task.tools';
 import { LlmClient } from './infrastructure/llm/llm.client';
+import { SystemPromptService } from './infrastructure/prompt/system-prompt.service';
 import { PrismaConversationRepository } from './infrastructure/persistence/prisma-conversation.repository';
 
 @Module({
@@ -19,6 +20,7 @@ import { PrismaConversationRepository } from './infrastructure/persistence/prism
     ScheduleTools,
     TaskTools,
     LlmClient,
+    SystemPromptService,
     {
       provide: 'IConversationRepository',
       useClass: PrismaConversationRepository,

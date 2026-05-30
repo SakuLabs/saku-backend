@@ -59,6 +59,7 @@ Copy `.env.example` to `.env`.
 | `LLM_API_KEY` | for AI agent | API key for the LLM provider |
 | `LLM_MODEL` | for AI agent | Model name/ID to use |
 | `LLM_TIMEOUT_MS` | no | Request timeout in ms (default 30000) |
+| `AGENT_PROMPT_FILE` | no | Path to the agent system-prompt template (default `prompts/agent-system.md`) |
 
 `/docs` returns 503 if `DOCS_USER`/`DOCS_PASS` unset (fail-closed).
 
@@ -204,8 +205,10 @@ test/
 - `GET /social/users/:id/profile?groupId=...`
 
 ### Agent (`/agent`) — bearer required
-- `POST /agent/chat` — `{ message, conversationId? }` — natural-language schedule & task management
+- `POST /agent/chat` — `{ content, conversationId? }` — natural-language schedule & task management
 - `GET  /agent/conversations` — list conversation history
+
+The agent's system prompt is a template at `prompts/agent-system.md` (override the path with `AGENT_PROMPT_FILE`). Edit the file to retune behaviour; `{{now}}` is substituted with the current ISO datetime per request. If the file is missing/empty, a built-in default is used.
 
 ### Chat (`/chat`) — bearer required
 - `GET  /chat/group/:groupId` — group history (member-only)

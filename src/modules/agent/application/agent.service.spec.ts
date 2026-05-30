@@ -8,12 +8,14 @@ import {
   ConversationMessage,
   IConversationRepository,
 } from '../domain/conversation.repository.interface';
+import { SystemPromptService } from '../infrastructure/prompt/system-prompt.service';
 
 describe('AgentService', () => {
   let service: AgentService;
   let llm: { chat: jest.Mock };
   let registry: { definitions: jest.Mock; dispatch: jest.Mock };
   let convRepo: jest.Mocked<IConversationRepository>;
+  let systemPrompt: { render: jest.Mock };
 
   const summary = (id: string, userId: string) => ({
     id,
@@ -36,11 +38,13 @@ describe('AgentService', () => {
       getMessages: jest.fn().mockResolvedValue([] as ConversationMessage[]),
       appendMessages: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<IConversationRepository>;
+    systemPrompt = { render: jest.fn().mockReturnValue('SYSTEM') };
 
     service = new AgentService(
       llm as unknown as LlmClient,
       registry as unknown as ToolRegistry,
       convRepo,
+      systemPrompt as unknown as SystemPromptService,
     );
   });
 
@@ -170,7 +174,11 @@ describe('AgentService', () => {
       role: 'assistant',
       content: null,
       tool_calls: [
-        { id: 'call_1', type: 'function', function: { name: 'list_tasks', arguments: '{}' } },
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'list_tasks', arguments: '{}' },
+        },
       ],
     };
     // 1st call returns a tool turn; 2nd call (after the tool ran) throws.

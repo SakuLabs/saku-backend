@@ -5,6 +5,7 @@ import {
   IConversationRepository,
 } from '../domain/conversation.repository.interface';
 import { ToolRegistry } from './tools/tool-registry';
+import { SystemPromptService } from '../infrastructure/prompt/system-prompt.service';
 
 const MAX_ITERATIONS = 5;
 
@@ -23,6 +24,7 @@ export class AgentService {
     private readonly toolRegistry: ToolRegistry,
     @Inject('IConversationRepository')
     private readonly conversationRepo: IConversationRepository,
+    private readonly systemPromptService: SystemPromptService,
   ) {}
 
   async chat(
@@ -37,7 +39,12 @@ export class AgentService {
     const history = await this.conversationRepo.getMessages(conversation.id);
 
     const llmMessages: LlmMessage[] = [
-      { role: 'system', content: this.systemPrompt() },
+      {
+        role: 'system',
+        content: this.systemPromptService.render({
+          now: new Date().toISOString(),
+        }),
+      },
       ...history.map((m) => this.toLlmMessage(m)),
       { role: 'user', content },
     ];
@@ -62,7 +69,10 @@ export class AgentService {
         toPersist.push(assistantMsg);
 
         if (!response.tool_calls || response.tool_calls.length === 0) {
-          await this.conversationRepo.appendMessages(conversation.id, toPersist);
+          await this.conversationRepo.appendMessages(
+            conversation.id,
+            toPersist,
+          );
           return {
             conversationId: conversation.id,
             reply: response.content ?? '',
@@ -144,17 +154,5 @@ export class AgentService {
       tool_calls: m.toolCalls,
       tool_call_id: m.toolCallId,
     };
-  }
-
-  private systemPrompt(): string {
-    const now = new Date().toISOString();
-    return [
-      'You are a scheduling assistant inside the Saku app.',
-      'You help the authenticated user manage their own schedules and tasks.',
-      `The current date and time is ${now}.`,
-      'Use the provided tools to read or change data; never invent IDs.',
-      'Before creating a schedule that might overlap, use check_conflicts.',
-      'After acting, confirm what you did in clear, friendly Bahasa Indonesia.',
-    ].join(' ');
   }
 }
