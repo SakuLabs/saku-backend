@@ -13,6 +13,7 @@ import type { DefaultEventsMap } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import type { JwtPayload } from '../../common/types/jwt-payload';
+import { getCorsOrigins } from '../../common/cors';
 
 type AuthedSocket = Socket<
   DefaultEventsMap,
@@ -23,7 +24,7 @@ type AuthedSocket = Socket<
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: getCorsOrigins(),
     credentials: true,
   },
 })

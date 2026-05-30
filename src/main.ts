@@ -6,6 +6,7 @@ import { apiReference } from '@scalar/nestjs-api-reference';
 import { timingSafeEqual } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
+import { getCorsOrigins } from './common/cors';
 
 function docsBasicAuth(req: Request, res: Response, next: NextFunction) {
   const expectedUser = process.env.DOCS_USER;
@@ -56,9 +57,9 @@ function docsBasicAuth(req: Request, res: Response, next: NextFunction) {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for frontend
+  // Enable CORS for frontend (origins configured via CORS_ORIGINS env var)
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'], // Vite default port
+    origin: getCorsOrigins(),
     credentials: true,
   });
 
