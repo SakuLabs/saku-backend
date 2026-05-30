@@ -149,19 +149,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: docker
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Loads the PROD environment's secrets (DOKPLOY_DEPLOY_WEBHOOK, PROD_HEALTH_URL).
+    environment: PROD
 
     steps:
       - name: Trigger Dokploy redeploy
+        env:
+          DOKPLOY_DEPLOY_WEBHOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
         run: |
-          curl -fSs --retry 3 --retry-delay 5 \
-            -X POST "${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}"
+          curl -fSs --retry 3 --retry-delay 5 -X POST "$DOKPLOY_DEPLOY_WEBHOOK"
 
       # Verify the new release is live + DB reachable.
-      # Skipped automatically until PROD_HEALTH_URL secret is set.
+      # Skips automatically until PROD_HEALTH_URL is set.
       - name: Verify live (readiness)
-        if: ${{ secrets.PROD_HEALTH_URL != '' }}
+        env:
+          PROD_HEALTH_URL: ${{ secrets.PROD_HEALTH_URL }}
         run: |
-          url="${{ secrets.PROD_HEALTH_URL }}/health/ready"
+          if [ -z "$PROD_HEALTH_URL" ]; then
+            echo "PROD_HEALTH_URL unset; skipping health poll"; exit 0
+          fi
+          url="$PROD_HEALTH_URL/health/ready"
           echo "Polling $url"
           for i in $(seq 1 30); do
             if curl -fsS "$url"; then
