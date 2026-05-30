@@ -55,6 +55,7 @@ Copy `.env.example` to `.env`.
 | `CLOUDINARY_CLOUD_NAME` | for avatars | Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | for avatars | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | for avatars | Cloudinary API secret |
+| `AGENT_ENABLED` | no | Master switch for the AI agent. Must be `true` to enable `POST /agent/chat`; otherwise it returns 503 and spends no tokens (default off) |
 | `LLM_BASE_URL` | for AI agent | OpenAI-compatible base URL (e.g. MiMo) |
 | `LLM_API_KEY` | for AI agent | API key for the LLM provider |
 | `LLM_MODEL` | for AI agent | Model name/ID to use |
@@ -205,7 +206,7 @@ test/
 - `GET /social/users/:id/profile?groupId=...`
 
 ### Agent (`/agent`) — bearer required
-- `POST /agent/chat` — body `{ content, conversationId? }` → `{ conversationId, reply }` — natural-language schedule & task management. Pass the returned `conversationId` back to continue the same thread.
+- `POST /agent/chat` — body `{ content, conversationId? }` → `{ conversationId, reply }` — natural-language schedule & task management. Pass the returned `conversationId` back to continue the same thread. **Gated by `AGENT_ENABLED=true`** — returns 503 (no tokens spent) when disabled.
 - `GET  /agent/conversations` — list the user's conversations
 - `GET  /agent/conversations/:id/messages` — full message history of one conversation (owner-only)
 

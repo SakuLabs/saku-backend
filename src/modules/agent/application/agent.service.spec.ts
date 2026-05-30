@@ -17,6 +17,8 @@ describe('AgentService', () => {
   let convRepo: jest.Mocked<IConversationRepository>;
   let systemPrompt: { render: jest.Mock };
 
+  const ORIGINAL_ENV = process.env;
+
   const summary = (id: string, userId: string) => ({
     id,
     userId,
@@ -25,7 +27,12 @@ describe('AgentService', () => {
     updatedAt: new Date(),
   });
 
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+  });
+
   beforeEach(() => {
+    process.env = { ...ORIGINAL_ENV, AGENT_ENABLED: 'true' };
     llm = { chat: jest.fn() };
     registry = {
       definitions: jest.fn().mockReturnValue([]),
@@ -46,6 +53,16 @@ describe('AgentService', () => {
       convRepo,
       systemPrompt as unknown as SystemPromptService,
     );
+  });
+
+  it('refuses (503) without touching DB or LLM when AGENT_ENABLED is not true', async () => {
+    process.env = { ...ORIGINAL_ENV, AGENT_ENABLED: 'false' };
+
+    await expect(service.chat('user-1', 'hello')).rejects.toThrow(
+      /dinonaktifkan/i,
+    );
+    expect(convRepo.create).not.toHaveBeenCalled();
+    expect(llm.chat).not.toHaveBeenCalled();
   });
 
   it('creates a conversation when none is given and returns the text reply', async () => {

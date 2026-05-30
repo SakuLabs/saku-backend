@@ -1,4 +1,10 @@
-import { ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { LlmClient, LlmMessage } from '../infrastructure/llm/llm.client';
 import {
   ConversationMessage,
@@ -32,6 +38,12 @@ export class AgentService {
     content: string,
     conversationId?: string,
   ): Promise<AgentChatResult> {
+    // Feature gate: refuse before any DB write or LLM call so no tokens are
+    // spent until the agent is explicitly enabled via AGENT_ENABLED=true.
+    if (process.env.AGENT_ENABLED !== 'true') {
+      throw new ServiceUnavailableException('Asisten AI sedang dinonaktifkan');
+    }
+
     const conversation = conversationId
       ? await this.requireOwnedConversation(conversationId, userId)
       : await this.conversationRepo.create(userId);
