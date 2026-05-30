@@ -5,11 +5,11 @@ import type { IConversationRepository } from '../domain/conversation.repository.
 
 describe('AgentController', () => {
   let controller: AgentController;
-  let service: { chat: jest.Mock };
+  let service: { chat: jest.Mock; getConversationMessages: jest.Mock };
   let convRepo: jest.Mocked<IConversationRepository>;
 
   beforeEach(() => {
-    service = { chat: jest.fn() };
+    service = { chat: jest.fn(), getConversationMessages: jest.fn() };
     convRepo = {
       create: jest.fn(),
       findById: jest.fn(),
@@ -51,6 +51,21 @@ describe('AgentController', () => {
 
   it('rejects unauthenticated list requests', async () => {
     await expect(controller.list(null)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('forwards conversation message reads to the service with the user id', async () => {
+    service.getConversationMessages.mockResolvedValue([
+      { role: 'user', content: 'hi' },
+    ]);
+    const result = await controller.messages('c1', { sub: 'user-1' } as never);
+    expect(service.getConversationMessages).toHaveBeenCalledWith('user-1', 'c1');
+    expect(result).toHaveLength(1);
+  });
+
+  it('rejects unauthenticated message reads', async () => {
+    await expect(controller.messages('c1', null)).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });

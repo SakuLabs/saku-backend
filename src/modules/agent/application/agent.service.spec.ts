@@ -63,6 +63,28 @@ describe('AgentService', () => {
     await expect(service.chat('user-1', 'hi', 'c1')).rejects.toThrow();
   });
 
+  it('returns messages of an owned conversation', async () => {
+    convRepo.findById.mockResolvedValue(summary('c1', 'user-1'));
+    const msgs: ConversationMessage[] = [
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'halo' },
+    ];
+    convRepo.getMessages.mockResolvedValue(msgs);
+
+    const result = await service.getConversationMessages('user-1', 'c1');
+
+    expect(convRepo.getMessages).toHaveBeenCalledWith('c1');
+    expect(result).toEqual(msgs);
+  });
+
+  it('rejects reading messages of a conversation owned by another user', async () => {
+    convRepo.findById.mockResolvedValue(summary('c1', 'other-user'));
+    await expect(
+      service.getConversationMessages('user-1', 'c1'),
+    ).rejects.toThrow();
+    expect(convRepo.getMessages).not.toHaveBeenCalled();
+  });
+
   it('executes a tool call then returns the follow-up text reply', async () => {
     convRepo.create.mockResolvedValue(summary('c1', 'user-1'));
     const toolTurn: LlmResponseMessage = {

@@ -121,6 +121,14 @@ export class AgentService {
     }
   }
 
+  async getConversationMessages(
+    userId: string,
+    conversationId: string,
+  ): Promise<ConversationMessage[]> {
+    await this.requireOwnedConversation(conversationId, userId);
+    return this.conversationRepo.getMessages(conversationId);
+  }
+
   private async requireOwnedConversation(id: string, userId: string) {
     const conversation = await this.conversationRepo.findById(id);
     if (!conversation || conversation.userId !== userId) {

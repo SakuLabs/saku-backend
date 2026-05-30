@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Inject,
+  Param,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -52,5 +53,20 @@ export class AgentController {
       throw new BadRequestException('User tidak terautentikasi');
     }
     return this.conversationRepo.listByUser(user.sub);
+  }
+
+  @Get('conversations/:id/messages')
+  @ApiOperation({ summary: 'Get the messages of one owned conversation' })
+  @ApiResponse({ status: 200, description: 'Messages retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Conversation not found' })
+  async messages(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload | null,
+  ) {
+    if (!user?.sub) {
+      throw new BadRequestException('User tidak terautentikasi');
+    }
+    return this.agentService.getConversationMessages(user.sub, id);
   }
 }
