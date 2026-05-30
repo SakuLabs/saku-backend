@@ -17,6 +17,6 @@ import { ScheduleModule } from '@nestjs/schedule';
       useClass: PrismaTaskRepository,
     },
   ],
-  exports: ['ITaskRepository'],
+  exports: ['ITaskRepository', CreateTaskUseCase],
 })
 export class TaskModule {}
