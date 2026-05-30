@@ -59,10 +59,10 @@ COPY --from=builder /app/src/generated ./src/generated
 
 EXPOSE 3001
 
-# Health check — hits the OpenAPI JSON endpoint (no auth needed for spec? actually behind basic auth).
-# Use a lightweight TCP-style check instead.
+# Health check — hits the dedicated /health liveness endpoint (no auth).
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3001) + '/', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3001) + '/health', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
 
-# Start the application
-CMD ["bun", "run", "start:prod"]
+# Apply pending DB migrations, then start the app.
+# `migrate deploy` is idempotent and safe to run on every boot.
+CMD ["sh", "-c", "bunx prisma migrate deploy && bun run start:prod"]
