@@ -54,6 +54,9 @@ RUN ls -la dist/ && test -f dist/main.js || (echo "dist/main.js not found after 
 # Copy Prisma schema and migrations
 COPY --from=builder /app/prisma ./prisma
 
+# Copy the Prisma config (supplies datasource.url for `migrate deploy` at boot)
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+
 # Copy generated Prisma client from builder stage (correct path: src/generated/prisma)
 COPY --from=builder /app/src/generated ./src/generated
 
