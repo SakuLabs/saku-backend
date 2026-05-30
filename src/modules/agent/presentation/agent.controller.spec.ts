@@ -60,7 +60,10 @@ describe('AgentController', () => {
       { role: 'user', content: 'hi' },
     ]);
     const result = await controller.messages('c1', { sub: 'user-1' } as never);
-    expect(service.getConversationMessages).toHaveBeenCalledWith('user-1', 'c1');
+    expect(service.getConversationMessages).toHaveBeenCalledWith(
+      'user-1',
+      'c1',
+    );
     expect(result).toHaveLength(1);
   });
 
