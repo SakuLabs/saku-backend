@@ -54,6 +54,13 @@ export class Task {
     this.status = TaskStatus.IN_PROGRESS;
   }
 
+  public reset() {
+    if (!this.canBeUpdated()) {
+      throw new Error('Task tidak dapat diubah statusnya');
+    }
+    this.status = TaskStatus.TODO;
+  }
+
   public updateStatus(newStatus: TaskStatus) {
     if (!this.canBeUpdated()) {
       throw new Error('Task tidak dapat diubah statusnya');

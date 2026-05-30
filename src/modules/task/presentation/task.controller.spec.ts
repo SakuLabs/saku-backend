@@ -131,6 +131,15 @@ describe('TaskController', () => {
       expect(task.status).toBe(TaskStatus.IN_PROGRESS);
     });
 
+    it('calls task.reset on TODO and saves', async () => {
+      const task = buildTask({ status: TaskStatus.IN_PROGRESS });
+      repo.findById.mockResolvedValueOnce(task);
+      repo.save.mockResolvedValueOnce(task);
+      await controller.updateStatus('id', 'TODO', me);
+      expect(task.status).toBe(TaskStatus.TODO);
+      expect(repo.save).toHaveBeenCalledWith(task, me.sub);
+    });
+
     it('throws on unknown status', async () => {
       const task = buildTask();
       repo.findById.mockResolvedValueOnce(task);

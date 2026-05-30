@@ -120,6 +120,25 @@ describe('Task entity', () => {
     });
   });
 
+  describe('reset', () => {
+    it('moves IN_PROGRESS back to TODO', () => {
+      const t = build({ status: TaskStatus.IN_PROGRESS });
+      t.reset();
+      expect(t.status).toBe(TaskStatus.TODO);
+    });
+
+    it('keeps TODO as TODO', () => {
+      const t = build();
+      t.reset();
+      expect(t.status).toBe(TaskStatus.TODO);
+    });
+
+    it('throws on DONE/EXPIRED', () => {
+      const t = build({ status: TaskStatus.DONE, progress: 100 });
+      expect(() => t.reset()).toThrow();
+    });
+  });
+
   describe('updateStatus', () => {
     it('updates to IN_PROGRESS', () => {
       const t = build();

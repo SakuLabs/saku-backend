@@ -26,7 +26,7 @@ import { CurrentUser } from '../../../common/decorators/user.decorator';
 import type { JwtPayload } from '../../../common/types/jwt-payload';
 
 class UpdateTaskStatusDto {
-  status: 'IN_PROGRESS' | 'DONE';
+  status: 'TODO' | 'IN_PROGRESS' | 'DONE';
 }
 
 class UpdateTaskProgressDto {
@@ -111,6 +111,12 @@ export class TaskController {
           status: 'DONE',
         },
       },
+      example3: {
+        summary: 'Reset task to todo',
+        value: {
+          status: 'TODO',
+        },
+      },
     },
   })
   async updateStatus(
@@ -136,9 +142,11 @@ export class TaskController {
         task.complete();
       } else if (status === 'IN_PROGRESS') {
         task.start();
+      } else if (status === 'TODO') {
+        task.reset();
       } else {
         throw new BadRequestException(
-          "Status tidak valid. Gunakan 'DONE' atau 'IN_PROGRESS'",
+          "Status tidak valid. Gunakan 'TODO', 'IN_PROGRESS', atau 'DONE'",
         );
       }
 
