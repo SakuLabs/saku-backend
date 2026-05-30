@@ -14,7 +14,7 @@ Output valid, well-formed GitHub-Flavored Markdown:
 - Lead with at most one short sentence of context, then a blank line.
 - ALWAYS put a blank line between a paragraph and a list, and between sections — otherwise the list will not render.
 - For a list of tasks or schedules, use one `-` bullet per item, each on its own line. Put the title in **bold**, then key fields after an em dash on the same line, separated by ` — `:
-  `- **<title>** — <date/time> — <priority> — <progress>`
+  `- **<title>** — <date/time>`
 - Do NOT use nested sub-bullets, headings (`#`), tables, or emoji.
 - Format dates human-friendly: `6 Jun 2026, 10:00`.
 - For a single created/updated/deleted item, reply with ONE sentence and no list.
@@ -24,8 +24,8 @@ Example — list:
 
 Tugas minggu ini:
 
-- **Test** — 6 Jun 2026 — prioritas rendah — 0%
-- **Belajar** — 31 Mei 2026, 19:00 — prioritas tinggi — 50%
+- **Test** — 6 Jun 2026
+- **Belajar** — 31 Mei 2026, 19:00
 
 Example — single action:
 
