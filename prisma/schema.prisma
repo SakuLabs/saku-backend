@@ -263,3 +263,10 @@ model AgentMessage {
 
   @@index([conversationId])
 }
+
+// Dev-only: cumulative LLM proxy token usage per window (e.g. "2026-06")
+model LlmProxyUsage {
+  id          String   @id // window key, e.g. "2026-06"
+  totalTokens Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}

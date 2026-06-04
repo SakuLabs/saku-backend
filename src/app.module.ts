@@ -12,6 +12,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { UserModule } from './modules/user/user.module';
 import { AgentModule } from './modules/agent/agent.module';
 import { HealthModule } from './modules/health/health.module';
+import { DevModule } from './modules/dev/dev.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { HealthModule } from './modules/health/health.module';
     UserModule,
     AgentModule,
     HealthModule,
+    DevModule,
   ],
   controllers: [],
   providers: [

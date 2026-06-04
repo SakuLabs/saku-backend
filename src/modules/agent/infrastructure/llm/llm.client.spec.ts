@@ -46,6 +46,42 @@ describe('LlmClient', () => {
     expect(result.content).toBe('hello');
   });
 
+  it('routes through the dev proxy when LLM_PROXY_URL is set', async () => {
+    process.env.LLM_PROXY_URL = 'https://deployed.test/dev/llm';
+    process.env.LLM_PROXY_TOKEN = 'proxy-token';
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { role: 'assistant', content: 'hello' } }],
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await client.chat(messages, tools);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://deployed.test/dev/llm/chat/completions');
+    expect(init.headers['Authorization']).toBe('Bearer proxy-token');
+  });
+
+  it('uses the real provider when LLM_PROXY_URL is not set', async () => {
+    delete process.env.LLM_PROXY_URL;
+    process.env.LLM_PROXY_TOKEN = 'proxy-token'; // set but unused without URL
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { role: 'assistant', content: 'hello' } }],
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await client.chat(messages, tools);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://mimo.test/v1/chat/completions');
+    expect(init.headers['Authorization']).toBe('Bearer key-123');
+  });
+
   it('returns tool_calls when present', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,

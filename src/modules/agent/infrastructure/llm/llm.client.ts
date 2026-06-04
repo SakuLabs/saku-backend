@@ -36,11 +36,19 @@ interface ChatCompletionResponse {
 export class LlmClient {
   private readonly logger = new Logger(LlmClient.name);
 
+  // Dev-only: when LLM_PROXY_URL is set, route every LLM call through a
+  // teammate's deployed /dev/llm proxy (authenticated with LLM_PROXY_TOKEN)
+  // instead of the real provider, so the real API key never needs sharing.
+  private get proxyUrl(): string {
+    return process.env.LLM_PROXY_URL ?? '';
+  }
   private get baseUrl(): string {
-    return process.env.LLM_BASE_URL ?? '';
+    return this.proxyUrl || (process.env.LLM_BASE_URL ?? '');
   }
   private get apiKey(): string {
-    return process.env.LLM_API_KEY ?? '';
+    return this.proxyUrl
+      ? (process.env.LLM_PROXY_TOKEN ?? '')
+      : (process.env.LLM_API_KEY ?? '');
   }
   private get model(): string {
     return process.env.LLM_MODEL ?? '';
