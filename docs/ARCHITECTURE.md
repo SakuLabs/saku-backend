@@ -191,6 +191,169 @@ The counter-argument for layering everything is **consistency**: one pattern mea
 
 Also worth noting: `task.entity.ts` and `schedule.entity.ts` are **rich domain entities** — state transitions (`complete()`, `start()`, `reset()`) guard their own preconditions (`canBeUpdated()`), keeping business rules in the domain layer rather than in services.
 
+## Pattern Diagrams
+
+How each pattern is wired in this codebase. Method names in class diagrams are illustrative — see the referenced files for exact signatures.
+
+### Singleton — `PrismaService`
+
+One instance per app lifecycle (NestJS default provider scope) exposed globally, so every consumer shares one database connection pool.
+
+```mermaid
+flowchart TB
+    subgraph PM["PrismaModule (@Global)"]
+        PS["PrismaService<br/>single shared instance<br/>OnModuleInit / OnModuleDestroy"]
+    end
+    A["AgentService"] --> PS
+    B["ChatService"] --> PS
+    C["PrismaTaskRepository"] --> PS
+    D["PrismaScheduleRepository"] --> PS
+    PS --> DB[("Database<br/>one connection pool")]
+```
+
+### Dependency Injection / IoC — injection tokens
+
+Consumers depend on a string token; the module binds the token to a concrete class at composition time. Swapping the implementation is a one-line change in the module.
+
+```mermaid
+flowchart LR
+    UC["TaskUseCases<br/>@Inject('ITaskRepository')"] -->|depends on| TOK(["'ITaskRepository'<br/>injection token"])
+    MOD["task.module.ts<br/>provide + useClass"] -->|binds| TOK
+    TOK -->|resolved at runtime to| IMPL["PrismaTaskRepository"]
+```
+
+### Repository — domain interface, infrastructure implementation
+
+The application layer only sees the interface; Prisma is invisible above the infrastructure layer. This is the dependency inversion that makes the core modules "clean" rather than classically layered.
+
+```mermaid
+classDiagram
+    class ITaskRepository {
+        <<interface>>
+        +findById(id)
+        +findAllByUser(userId)
+        +save(task)
+        +delete(id)
+    }
+    class PrismaTaskRepository {
+        -prisma PrismaService
+        +findById(id)
+        +save(task)
+    }
+    class TaskUseCases {
+        -repo ITaskRepository
+    }
+    ITaskRepository <|.. PrismaTaskRepository : implements
+    TaskUseCases --> ITaskRepository : depends on abstraction
+    PrismaTaskRepository --> PrismaService : uses
+```
+
+### Adapter / Facade — LLM client and proxy
+
+`LlmClient` translates internal calls into the provider's HTTP format; the dev LLM proxy additionally swaps auth keys and meters token usage. The rest of the app never speaks the provider's protocol directly.
+
+```mermaid
+flowchart LR
+    AS["AgentService<br/>(application)"] --> LC["LlmClient<br/>(infrastructure adapter)"]
+    LC -->|"provider HTTP format"| EXT["External LLM API"]
+    DEVC["Dev clients"] --> PX["LlmProxyController<br/>swaps auth key, meters tokens"]
+    PX --> EXT
+```
+
+### Decorator — `@CurrentUser()` and the NestJS decorator stack
+
+A custom param decorator extracts the authenticated user (placed on the request by `JwtAuthGuard`) and injects it straight into the handler signature.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as JwtAuthGuard
+    participant D as CurrentUser decorator
+    participant H as Controller handler
+
+    C->>G: request + JWT
+    G->>G: verify token, set request.user
+    G->>D: resolve handler params
+    D->>D: read request.user
+    D-->>H: user injected as argument
+    H-->>C: response
+```
+
+### Registry — `ToolRegistry`
+
+A name → handler map. The LLM returns a tool call by string name; the registry dispatches it without the agent service knowing which class handles what.
+
+```mermaid
+flowchart TB
+    LLM["LLM tool call<br/>name + args"] --> TR["ToolRegistry<br/>handlers: name → fn"]
+    TR -->|"create_task"| H1["TaskTools.createTask"]
+    TR -->|"list_schedules"| H2["ScheduleTools.listSchedules"]
+    TR -.->|"unknown name"| ERR["error result"]
+```
+
+### Strategy — interchangeable tool providers
+
+`TaskTools` and `ScheduleTools` share the same shape (a `definitions()` method plus handlers) and plug into the registry interchangeably. The contract is implicit (duck-typed) — adding a formal `ToolProvider` interface would make it explicit.
+
+```mermaid
+classDiagram
+    class ToolProvider {
+        <<implicit contract>>
+        +definitions()
+    }
+    class TaskTools {
+        +definitions()
+        +createTask(args)
+        +listTasks(args)
+    }
+    class ScheduleTools {
+        +definitions()
+        +createSchedule(args)
+        +listSchedules(args)
+    }
+    class ToolRegistry {
+        -handlers Map
+        +dispatch(name, args)
+    }
+    ToolProvider <|.. TaskTools
+    ToolProvider <|.. ScheduleTools
+    ToolRegistry o-- TaskTools : registers
+    ToolRegistry o-- ScheduleTools : registers
+```
+
+### Chain of Responsibility — guard → interceptor → handler pipeline
+
+Each link can short-circuit the request (guard rejects with 401) or wrap it (interceptor logs before and after).
+
+```mermaid
+flowchart LR
+    REQ["Request"] --> G["JwtAuthGuard"]
+    G --> I1["LoggingInterceptor<br/>(pre)"]
+    I1 --> H["Route handler"]
+    H --> I2["LoggingInterceptor<br/>(post)"]
+    I2 --> RES["Response"]
+    G -.->|invalid token| E401["401 Unauthorized"]
+```
+
+### Observer / Pub-Sub — `ChatGateway`
+
+Clients subscribe by connecting and joining rooms; the gateway publishes messages, presence, and notification events to all subscribers of a room without senders knowing who receives.
+
+```mermaid
+sequenceDiagram
+    participant A as Client A
+    participant B as Client B
+    participant GW as ChatGateway
+    participant S as ChatService
+
+    A->>GW: connect (WS), join user room
+    B->>GW: connect (WS), join user room
+    A->>GW: send message
+    GW->>S: persist message
+    GW-->>B: server.to(room).emit("message")
+    GW-->>A: server.to(room).emit("presence")
+```
+
 ## Known Layering Violations
 
 Tracked here so they don't get cargo-culted:
