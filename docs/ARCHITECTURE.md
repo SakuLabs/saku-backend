@@ -12,32 +12,32 @@ The backend is a **monolithic application (modular monolith)** built with **Nest
 
 ```mermaid
 graph TB
-    Client[Clients: saku-frontend / mobile]
+    Client["Clients: saku-frontend / mobile"]
 
     subgraph Monolith["saku-backend — single NestJS process"]
-        AppModule[AppModule<br/>root module]
+        AppModule["AppModule<br/>root module"]
 
         subgraph Layered["Layered modules (Clean Architecture)"]
-            Agent[AgentModule]
-            Task[TaskModule]
-            Schedule[ScheduleModule]
+            Agent["AgentModule"]
+            Task["TaskModule"]
+            Schedule["ScheduleModule"]
         end
 
         subgraph Flat["Flat modules (controller → service)"]
-            Auth[AuthModule]
-            Chat[ChatModule + WS Gateway]
-            User[UserModule]
-            Social[SocialModule]
-            Health[HealthModule]
-            Dev[DevModule<br/>LLM proxy]
+            Auth["AuthModule"]
+            Chat["ChatModule + WS Gateway"]
+            User["UserModule"]
+            Social["SocialModule"]
+            Health["HealthModule"]
+            Dev["DevModule<br/>LLM proxy"]
         end
 
-        Common[common/<br/>guards · decorators · jwt · interceptors]
-        Prisma[PrismaModule<br/>@Global PrismaService]
+        Common["common/<br/>guards, decorators, jwt, interceptors"]
+        Prisma["PrismaModule<br/>@Global PrismaService"]
     end
 
-    DB[(Database)]
-    LLM[External LLM API]
+    DB[("Database")]
+    LLM["External LLM API"]
 
     Client -->|HTTP / WebSocket| AppModule
     AppModule --> Layered
@@ -72,9 +72,9 @@ Dependencies point inward — `domain` is the center and depends on nothing. `in
 ```mermaid
 graph LR
     subgraph Module["e.g. modules/agent/"]
-        P[presentation<br/>agent.controller.ts] --> A[application<br/>agent.service.ts · tools/]
-        A --> D[domain<br/>conversation.repository.interface.ts]
-        I[infrastructure<br/>prisma-conversation.repository.ts · llm.client.ts] -. implements .-> D
+        P["presentation<br/>agent.controller.ts"] --> A["application<br/>agent.service.ts, tools/"]
+        A --> D["domain<br/>conversation.repository.interface.ts"]
+        I["infrastructure<br/>prisma-conversation.repository.ts, llm.client.ts"] -. implements .-> D
     end
 ```
 
@@ -112,8 +112,8 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    Ctrl[chat.controller.ts] --> Svc[chat.service.ts] --> PS[PrismaService]
-    GW[chat.gateway.ts<br/>WebSocket] --> Svc
+    Ctrl["chat.controller.ts"] --> Svc["chat.service.ts"] --> PS["PrismaService"]
+    GW["chat.gateway.ts<br/>WebSocket"] --> Svc
 ```
 
 This is a deliberate trade-off: layers where the domain is complex, flat where it is mostly CRUD.
