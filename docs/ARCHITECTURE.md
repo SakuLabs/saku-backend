@@ -177,7 +177,8 @@ The counter-argument for layering everything is **consistency**: one pattern mea
 | Pattern | Where | Evidence |
 |---|---|---|
 | **Repository** | `src/modules/*/domain/*.repository.interface.ts` + `src/modules/*/infrastructure/persistence/prisma-*.repository.ts` | `ITaskRepository`, `IScheduleRepository`, `IConversationRepository` interfaces in domain; Prisma implementations in infrastructure. Decouples domain from persistence. |
-| **Adapter / Facade** | `src/modules/dev/llm-proxy.controller.ts:48`, `src/modules/agent/infrastructure/llm/llm.client.ts` | Wraps the external LLM provider API — swaps auth keys, adds token accounting (`LlmProxyUsageService`), and translates requests/responses behind a stable internal interface. |
+| **Adapter** | `src/modules/agent/infrastructure/llm/llm.client.ts:60` | Converts between interfaces: the app calls a typed `chat(messages, tools)` method; the adapter translates to/from the provider's HTTP/JSON wire format, mapping errors to `BadGatewayException`. |
+| **Proxy** | `src/modules/dev/llm-proxy.controller.ts:48` | Protection proxy: exposes the *same* `/chat/completions` interface as the upstream provider, passes the body through unmodified, but adds access control (`assertProxyToken`, usage limits) and token metering (`LlmProxyUsageService`). |
 | **Decorator** | `src/common/decorators/user.decorator.ts:15`, controllers | Custom `@CurrentUser()` param decorator; NestJS `@UseGuards`, `@Controller`, `@Injectable` decorators throughout. |
 
 ### Behavioral
@@ -248,16 +249,28 @@ classDiagram
     PrismaTaskRepository --> PrismaService : uses
 ```
 
-### Adapter / Facade — LLM client and proxy
+### Adapter — `LlmClient`
 
-`LlmClient` translates internal calls into the provider's HTTP format; the dev LLM proxy additionally swaps auth keys and meters token usage. The rest of the app never speaks the provider's protocol directly.
+Converts between two incompatible interfaces: the application speaks a typed TypeScript method (`chat(messages, tools)`); the provider speaks HTTP/JSON. The adapter owns the translation (request shaping, response unwrapping, error mapping) so the rest of the app never touches the wire format.
 
 ```mermaid
 flowchart LR
-    AS["AgentService<br/>(application)"] --> LC["LlmClient<br/>(infrastructure adapter)"]
-    LC -->|"provider HTTP format"| EXT["External LLM API"]
-    DEVC["Dev clients"] --> PX["LlmProxyController<br/>swaps auth key, meters tokens"]
-    PX --> EXT
+    AS["AgentService<br/>calls chat(messages, tools)"] --> LC["LlmClient (Adapter)<br/>typed method ↔ HTTP/JSON<br/>maps errors to BadGatewayException"]
+    LC -->|"POST /chat/completions<br/>provider wire format"| EXT["External LLM API"]
+```
+
+### Proxy — `LlmProxyController`
+
+A *protection proxy*: it exposes the **same** `/chat/completions` interface as the upstream provider and passes the request body through unmodified — no interface conversion (that is what distinguishes it from an adapter). What it adds is access control and accounting.
+
+```mermaid
+flowchart LR
+    DEVC["Teammate's local backend<br/>(LLM_PROXY_URL set)"] -->|"same wire format"| PX["LlmProxyController (Proxy)"]
+    PX --> T["assertProxyToken<br/>access control"]
+    T --> L["assertWithinLimit<br/>monthly token budget"]
+    L -->|"body passed through,<br/>real API key attached"| EXT["External LLM API"]
+    EXT --> R["usage.record(tokens)<br/>metering"]
+    R --> DEVC
 ```
 
 ### Decorator — `@CurrentUser()` and the NestJS decorator stack
@@ -413,4 +426,4 @@ Tracked here so they don't get cargo-culted:
 | Module organization | NestJS feature modules + DI container |
 | Internal architecture (core modules) | Layered / Clean Architecture (presentation → application → domain ← infrastructure) |
 | Internal architecture (simple modules) | Flat controller → service → Prisma |
-| Patterns in use | Singleton, DI/IoC, Repository, Adapter/Facade, Decorator, Registry, Strategy, Chain of Responsibility, Observer/Pub-Sub |
+| Patterns in use | Singleton, DI/IoC, Repository, Adapter, Proxy, Decorator, Registry, Strategy, Chain of Responsibility, Observer/Pub-Sub |
