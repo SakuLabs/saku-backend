@@ -118,6 +118,51 @@ graph LR
 
 This is a deliberate trade-off: layers where the domain is complex, flat where it is mostly CRUD.
 
+## Why Some Modules Are Layered and Some Are Flat
+
+Layering has a cost, and it only pays off when a module carries real business rules. The split in this codebase follows that rule:
+
+- **Layered** (`agent`, `task`, `schedule`) — these modules own genuine domain logic:
+  - `agent`: LLM orchestration, tool dispatch, conversation state — many moving parts plus an external API.
+  - `task`: a state machine (`complete()`, `start()`, `reset()`) with precondition checks (`canBeUpdated()`).
+  - `schedule`: conflict detection and duration rules.
+- **Flat** (`auth`, `chat`, `user`, `social`) — mostly CRUD and framework glue:
+  - `chat`: receive message → save → broadcast. The logic is thin.
+  - `auth`: validate credentials → issue JWT. Mostly delegation to libraries.
+  - Adding layers here would mean four files passing data through while adding nothing.
+
+### Benefits of layering
+
+1. **Testability** — domain interfaces like `ITaskRepository` let you mock the repository and test business logic without a database. Testing a flat module requires mocking Prisma or running a test DB.
+2. **Swappable infrastructure** — changing Prisma for another ORM, or switching LLM provider, only touches `infrastructure/`. The domain stays untouched.
+3. **Business rules in one place** — `task.entity.ts` owns its state transitions; rules can't leak into controllers.
+4. **Parallel work** — one developer can edit `presentation/` while another edits `infrastructure/` without collisions.
+
+### Costs of layering
+
+1. **File count ×3–4** — one endpoint means controller + DTO + use-case + interface + entity + repository implementation. Flat is two files.
+2. **Indirection** — tracing a request takes four hops to find the logic. Slower onboarding for simple features.
+3. **Boilerplate drift** — anemic pass-through layers (a service that only calls the repository) are pure ceremony.
+4. **Premature abstraction** — an interface with exactly one implementation forever is dead weight (YAGNI).
+
+### Should every module be layered?
+
+It is possible, but not automatically worth it:
+
+| Module | Layer it? | Why |
+|---|---|---|
+| `auth` | No | JWT issue/validate — no domain logic, layers would be ceremony |
+| `user` | Borderline | If profile rules grow (plans, quotas), promote it later |
+| `chat` | Borderline | If chat gains features (threads, reactions, moderation), promote it |
+| `social` | Borderline | Same — depends on the roadmap |
+| `health`, `dev` | Never | Infrastructure glue |
+
+**Rule of thumb:** layer a module when it accumulates *invariants* — rules that must always hold — not by default. Migrating flat → layered later is cheap in NestJS because the module boundary already exists; the refactor stays inside one folder.
+
+The counter-argument for layering everything is **consistency**: one pattern means fewer "which style goes here?" decisions and easier onboarding. Some teams accept the boilerplate for uniformity — a valid choice, but it taxes every CRUD endpoint.
+
+**Current stance:** the split is intentional and correct. Watch `chat` — its realtime feature set is growing (presence, notifications, unread counts), making it the first candidate for promotion to the layered structure.
+
 ## Design Patterns Found in the Codebase
 
 ### Creational
