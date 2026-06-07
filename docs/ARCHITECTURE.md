@@ -354,6 +354,33 @@ sequenceDiagram
     GW-->>A: server.to(room).emit("presence")
 ```
 
+Structural view — the gateway is the subject, connected clients are observers grouped by room:
+
+```mermaid
+flowchart TB
+    subgraph Subject["Subject (publisher)"]
+        GW["ChatGateway<br/>@WebSocketServer()"]
+    end
+
+    EV["Events: message, presence,<br/>notification, unread"] --> GW
+
+    subgraph RoomA["Room: user-A"]
+        A1["Client A — laptop"]
+        A2["Client A — phone"]
+    end
+
+    subgraph RoomB["Room: user-B"]
+        B1["Client B"]
+    end
+
+    A1 -.->|"subscribe: connect + join room"| GW
+    A2 -.->|"subscribe: connect + join room"| GW
+    B1 -.->|"subscribe: connect + join room"| GW
+
+    GW -->|"server.to('user-A').emit()"| RoomA
+    GW -->|"server.to('user-B').emit()"| RoomB
+```
+
 ## Known Layering Violations
 
 Tracked here so they don't get cargo-culted:
