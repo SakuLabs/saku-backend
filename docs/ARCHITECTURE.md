@@ -279,6 +279,23 @@ sequenceDiagram
     H-->>C: response
 ```
 
+Structural view — decorators attach metadata and behavior to the handler without changing its code:
+
+```mermaid
+flowchart TB
+    subgraph Handler["Route handler (undecorated core)"]
+        M["getProfile(user) — plain method,<br/>knows nothing about HTTP or JWT"]
+    end
+
+    D1["@Controller('agent')<br/>class decorator: routing prefix"] --> Handler
+    D2["@Get(':id')<br/>method decorator: HTTP binding"] --> Handler
+    D3["@UseGuards(JwtAuthGuard)<br/>method decorator: auth behavior"] --> Handler
+    D4["@CurrentUser()<br/>param decorator: extracts request.user"] --> Handler
+
+    REQ["Incoming request"] --> D1
+    Handler --> RES["Response"]
+```
+
 ### Registry — `ToolRegistry`
 
 A name → handler map. The LLM returns a tool call by string name; the registry dispatches it without the agent service knowing which class handles what.
